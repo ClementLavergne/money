@@ -1,3 +1,4 @@
+#[macro_use]
 mod utils;
 
 use wasm_bindgen::prelude::*;
@@ -32,7 +33,7 @@ impl Account {
     // Custom tags
     pub fn add_tag(&mut self, tag: &str) {
         if self.available_tags.iter().any(|i| i == tag) {
-            println!("tag '{}' already exists!", tag)
+            log!("tag '{}' already exists!", tag)
         }
         else {
             self.available_tags.push(tag.to_string())
