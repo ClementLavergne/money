@@ -20,6 +20,8 @@ pub struct Account {
 #[wasm_bindgen]
 impl Account {
     pub fn new () -> Account {
+        utils::set_panic_hook();
+
         let empty_tags = Vec::new();
 
         Account {
