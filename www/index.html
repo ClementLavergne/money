@@ -2,9 +2,14 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Hello wasm-pack!</title>
+    <title>MONEY</title>
   </head>
   <body>
+    <label for="tags">Tags:</label>
+    <input type="text" list="tag-list" id="tags">
+    <datalist id="tag-list"></datalist>
+    <button type="button" id="add-tag">add</button>
+    <button type="button" id="remove-tag">remove</button>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
     <script src="./bootstrap.js"></script>
   </body>
