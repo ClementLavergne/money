@@ -2,34 +2,51 @@ import { Account } from "money";
 
 // Singleton
 const account = new Account()
-const inputTag = document.getElementById("tags");
+// Tags management
+const inputTag = document.getElementById("input-tag");
 const tags = document.getElementById("tag-list");
 const addTag = document.getElementById("add-tag");
 const removeTag = document.getElementById("remove-tag");
+// Resources management
+const inputResource = document.getElementById("input-resource");
+const resources = document.getElementById("resource-list");
+const addResource = document.getElementById("add-resource");
+const removeResource = document.getElementById("remove-resource");
 
-const refreshTags = (items) => {
+const refreshList = (node, items) => {
     // Remove existing
-    while (tags.firstChild) {
-        tags.removeChild(tags.lastChild);
+    while (node.firstChild) {
+        node.removeChild(node.lastChild);
     }
 
     // Update
     items.forEach(function(item){
         var option = document.createElement('option');
         option.value = item;
-        tags.appendChild(option);
+        node.appendChild(option);
     });
-
-    // Clear text
-    inputTag.value = "";
 };
 
 addTag.addEventListener("click", event => {
     account.add_tag(inputTag.value.toString())
-    refreshTags(account.get_tags())
+    refreshList(tags, account.export_tags())
+    inputTag.value = "";
 });
 
 removeTag.addEventListener("click", event => {
     account.remove_tag(inputTag.value)
-    refreshTags(account.get_tags())
+    refreshList(tags, account.export_tags())
+    inputTag.value = "";
+});
+
+addResource.addEventListener("click", event => {
+    account.add_resource(inputResource.value.toString())
+    refreshList(resources, account.export_resources())
+    inputResource.value = "";
+});
+
+removeResource.addEventListener("click", event => {
+    account.remove_resource(inputResource.value)
+    refreshList(resources, account.export_resources())
+    inputResource.value = "";
 });

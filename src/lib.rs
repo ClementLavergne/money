@@ -2,12 +2,12 @@
 //!
 //! `money` is a collection of utilities to make tracking money expenses.
 
+mod ext;
 mod utils;
 
-use wasm_bindgen::prelude::*;
-
-extern crate js_sys;
+use ext::ExclusiveItemExt;
 use js_sys::Array;
+use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -18,7 +18,8 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 /// Manages account data.
 #[wasm_bindgen]
 pub struct Account {
-    available_tags: Vec<String>,
+    tags: Vec<String>,
+    resources: Vec<String>,
 }
 
 #[wasm_bindgen]
@@ -28,99 +29,39 @@ impl Account {
     pub fn create() -> Account {
         utils::set_panic_hook();
 
-        let empty_tags = Vec::new();
-
         Account {
-            available_tags: empty_tags,
+            tags: Vec::new(),
+            resources: Vec::new(),
         }
     }
 
-    /// Adds a new tag if not exists yet.
+    /// Add a new tag.
     pub fn add_tag(&mut self, tag: &str) {
-        if !tag.is_empty() {
-            if self.available_tags.iter().any(|i| i == tag) {
-                println!("tag '{}' already exists!", tag)
-            } else {
-                self.available_tags.push(tag.to_string())
-            }
-        }
+        self.tags.add_exclusive(tag);
     }
 
-    /// Removes an existing tag.
+    /// Remove a tag.
     pub fn remove_tag(&mut self, tag: &str) {
-        let index = self.available_tags.iter().position(|x| x == tag);
-        if let Some(i) = index {
-            self.available_tags.remove(i);
-        }
+        self.tags.remove_exclusive(tag);
     }
 
-    /// Extracts available tags as `JsValue`.
-    pub fn get_tags(&self) -> Array {
-        self.available_tags.iter().map(JsValue::from).collect()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ignore_empty_tag() {
-        let mut data = Account::create();
-
-        assert_eq!(data.available_tags.len(), 0);
-        data.add_tag("");
-        assert_eq!(data.available_tags.len(), 0);
+    /// Get tags as `JsValues`.
+    pub fn export_tags(&self) -> Array {
+        self.tags.iter().map(JsValue::from).collect()
     }
 
-    #[test]
-    fn avoid_tag_redundancy() {
-        let mut data = Account::create();
-
-        assert_eq!(data.available_tags.len(), 0);
-        data.add_tag("Food");
-        assert_eq!(vec![String::from("Food")], data.available_tags);
-        data.add_tag("Transport");
-        assert_eq!(
-            vec![String::from("Food"), String::from("Transport")],
-            data.available_tags
-        );
-        data.add_tag("Food");
-        data.add_tag("Service");
-        assert_eq!(
-            vec![
-                String::from("Food"),
-                String::from("Transport"),
-                String::from("Service")
-            ],
-            data.available_tags
-        );
+    /// Add a new resource.
+    pub fn add_resource(&mut self, tag: &str) {
+        self.resources.add_exclusive(tag);
     }
 
-    #[test]
-    fn safe_tag_remove() {
-        let mut data = Account::create();
+    /// Remove a resource.
+    pub fn remove_resource(&mut self, tag: &str) {
+        self.resources.remove_exclusive(tag);
+    }
 
-        data.add_tag("Food");
-        data.add_tag("Transport");
-        data.add_tag("Service");
-        assert_eq!(
-            vec![
-                String::from("Food"),
-                String::from("Transport"),
-                String::from("Service")
-            ],
-            data.available_tags
-        );
-        data.remove_tag("Food");
-        assert_eq!(
-            vec![String::from("Transport"), String::from("Service")],
-            data.available_tags
-        );
-        data.remove_tag("Hangout");
-        assert_eq!(
-            vec![String::from("Transport"), String::from("Service")],
-            data.available_tags
-        );
+    /// Get resources as `JsValues`.
+    pub fn export_resources(&self) -> Array {
+        self.resources.iter().map(JsValue::from).collect()
     }
 }
