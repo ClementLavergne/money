@@ -14,18 +14,30 @@ use js_sys::Array;
 wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
-pub fn extract_tag_array() {
-    let mut data = Account::create();
+pub fn manage_resources_and_tags() {
+    let mut account = Account::create();
 
-    data.add_tag("Food");
-    data.add_tag("Transport");
-    data.add_tag("Service");
+    account.add_tag("Food");
+    account.add_tag("Transport");
+    account.add_tag("");
+    account.add_tag("Service");
+    account.add_tag("Video Games");
+    account.remove_tag("Vehicle");
+    account.remove_tag("Transport");
+    account.add_resource("Bank 1");
+    account.add_resource("Bank 2");
+    account.add_resource("Bank 1");
+    account.remove_resource("");
 
-    let output_array = data.get_tags();
-    let expected_array = Array::new();
+    let resource_arr = Array::new();
+    let tag_arr = Array::new();
 
-    expected_array.set(0, JsValue::from("Food"));
-    expected_array.set(1, JsValue::from("Transport"));
-    expected_array.set(2, JsValue::from("Service"));
-    assert_eq!(expected_array.to_vec(), output_array.to_vec());
+    tag_arr.set(0, JsValue::from("Food"));
+    tag_arr.set(1, JsValue::from("Service"));
+    tag_arr.set(2, JsValue::from("Video Games"));
+    resource_arr.set(0, JsValue::from("Bank 1"));
+    resource_arr.set(1, JsValue::from("Bank 2"));
+
+    assert_eq!(tag_arr.to_vec(), account.export_tags().to_vec());
+    assert_eq!(resource_arr.to_vec(), account.export_resources().to_vec());
 }

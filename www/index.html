@@ -3,13 +3,23 @@
   <head>
     <meta charset="utf-8">
     <title>MONEY</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
   </head>
   <body>
-    <label for="tags">Tags:</label>
-    <input type="text" list="tag-list" id="tags">
-    <datalist id="tag-list"></datalist>
-    <button type="button" id="add-tag">add</button>
-    <button type="button" id="remove-tag">remove</button>
+    <div>
+      <label for="tags">Tags:</label>
+      <input type="text" list="tag-list" id="input-tag">
+      <datalist id="tag-list"></datalist>
+      <button type="button" id="add-tag">add</button>
+      <button type="button" id="remove-tag">remove</button>
+    </div>
+    <div>
+      <label for="resources">Resources:</label>
+      <input type="text" list="resource-list" id="input-resource">
+      <datalist id="resource-list"></datalist>
+      <button type="button" id="add-resource">add</button>
+      <button type="button" id="remove-resource">remove</button>
+    </div>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
     <script src="./bootstrap.js"></script>
   </body>
