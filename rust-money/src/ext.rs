@@ -1,6 +1,7 @@
 //! # module `ext`
 //!
 //! Adds new functions to `Vec<String>` type.
+
 pub trait ExclusiveItemExt {
     fn add_exclusive(&mut self, tag: &str);
     fn remove_exclusive(&mut self, tag: &str);

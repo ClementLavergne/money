@@ -1,12 +1,11 @@
-//! # Money
+//! # Money - WebAssembly API
 //!
 //! `money` is a collection of utilities to make tracking money expenses.
 
-mod ext;
 mod utils;
 
-use ext::ExclusiveItemExt;
 use js_sys::Array;
+use rust_money::Account;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -17,51 +16,49 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 /// Manages account data.
 #[wasm_bindgen]
-pub struct Account {
-    tags: Vec<String>,
-    resources: Vec<String>,
+pub struct AccountClient {
+    account: Account,
 }
 
 #[wasm_bindgen]
-impl Account {
+impl AccountClient {
     /// Instantiates a new object.
     #[wasm_bindgen(constructor)]
-    pub fn create() -> Account {
+    pub fn create() -> AccountClient {
         utils::set_panic_hook();
 
-        Account {
-            tags: Vec::new(),
-            resources: Vec::new(),
+        AccountClient {
+            account: Account::create(),
         }
     }
 
     /// Add a new tag.
     pub fn add_tag(&mut self, tag: &str) {
-        self.tags.add_exclusive(tag);
+        self.account.add_tag(tag);
     }
 
     /// Remove a tag.
     pub fn remove_tag(&mut self, tag: &str) {
-        self.tags.remove_exclusive(tag);
+        self.account.remove_tag(tag);
     }
 
     /// Get tags as `JsValues`.
-    pub fn export_tags(&self) -> Array {
-        self.tags.iter().map(JsValue::from).collect()
+    pub fn tags(&self) -> Array {
+        self.account.tags().iter().map(JsValue::from).collect()
     }
 
     /// Add a new resource.
-    pub fn add_resource(&mut self, tag: &str) {
-        self.resources.add_exclusive(tag);
+    pub fn add_resource(&mut self, resource: &str) {
+        self.account.add_resource(resource);
     }
 
     /// Remove a resource.
-    pub fn remove_resource(&mut self, tag: &str) {
-        self.resources.remove_exclusive(tag);
+    pub fn remove_resource(&mut self, resource: &str) {
+        self.account.remove_resource(resource);
     }
 
     /// Get resources as `JsValues`.
-    pub fn export_resources(&self) -> Array {
-        self.resources.iter().map(JsValue::from).collect()
+    pub fn resources(&self) -> Array {
+        self.account.resources().iter().map(JsValue::from).collect()
     }
 }
