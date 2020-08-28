@@ -1,69 +1,108 @@
-<div align="center">
+# MONEY
 
-  <h1><code>wasm-pack-template</code></h1>
+Cash management **crates** for *Rust* and *Web* applications.
 
-  <strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong>
+## Project structure
 
-  <p>
-    <a href="https://travis-ci.org/rustwasm/wasm-pack-template"><img src="https://img.shields.io/travis/rustwasm/wasm-pack-template.svg?style=flat-square" alt="Build Status" /></a>
-  </p>
+### Rust crates
 
-  <h3>
-    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
-    <span> | </span>
-    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
-  </h3>
+First of all, there are 2 *Rust Workspaces*:
 
-  <sub>Built with 🦀🕸 by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub>
-</div>
+* `rust-money`: core **API** implementation for *Rust* applications.
+* `wasm-money`: `money` for *WebAssembly* target and *JavaScript/TypeScript* binding.
 
-## About
+### Web application
 
-[**📚 Read this template tutorial! 📚**][template-docs]
+There is also the `webpack-app` project which uses `wasm-money` artifacts to provide a web-based front-end solution.
 
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
+> This structure is a temporary one as `rust-money` is not published yet, it enables developping and testing things easily.
 
-Be sure to check out [other `wasm-pack` tutorials online][tutorials] for other
-templates and usages of `wasm-pack`.
+## MacOS setup
 
-[tutorials]: https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html
-[template-docs]: https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html
+Follow these steps:
 
-## 🚴 Usage
+```zsh
+# Install Rust toolchain
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-### 🐑 Use `cargo generate` to Clone this Template
+# Install "wasm-pack"
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-[Learn more about `cargo generate` here.](https://github.com/ashleygwilliams/cargo-generate)
-
-```
-cargo generate --git https://github.com/rustwasm/wasm-pack-template.git --name my-project
-cd my-project
+# Install Node
+brew install node
 ```
 
-### 🛠️ Build with `wasm-pack build`
+## Build and test Rust crates
 
-```
-wasm-pack build
-```
+Make sure that tools are correctly installed by building local *Rust* **crates**:
 
-### 🔬 Test in Headless Browsers with `wasm-pack test`
-
-```
-wasm-pack test --headless --firefox
+```zsh
+# Build each workspace binary for host target
+cargo build
 ```
 
-### 🎁 Publish to NPM with `wasm-pack publish`
+Run each test using **host** target:
 
+```zsh
+# Test workspaces (default target)
+cargo test
 ```
-wasm-pack publish
+
+> Running tests automatically triggers the corresponding build before.
+
+## Build WebAssembly binary and JavaScript interface
+
+Then attempt to cross-compile the *WebAssembly* binary - from `wasm-money` sources - and generate both *JavaScript* and *TypeScript* interfaces
+using this command:
+
+```zsh
+# Build 'wasm-money' workspace for WebAssembly target
+# Generate binding code too
+wasm-pack build wasm-money
 ```
 
-## 🔋 Batteries Included
+> This command automatically calls `cargo build` for `wasm-money`only, but for target `wasm32-unknown-unknown`!
+> Both binary and binding code will be generated into folder `wasm-money/pkg`.
 
-* [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-* [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-* [`wee_alloc`](https://github.com/rustwasm/wee_alloc), an allocator optimized
-  for small code size.
+## Run the web application
+
+We can now initialize the web server of the *webpack* application:
+
+```zsh
+cd webpack-app
+
+# Initialize the web server
+npm install
+```
+
+> Must be performed once!
+
+The web server is now ready to use:
+
+```zsh
+# Start the web server
+npm run start
+```
+
+> It is more convenient to run this command in a seperate terminal.
+
+After that, you should be able to visit `localhost:8080` from the web browser of your choice!
+
+## Test the web application
+
+Run tests which are specific to target `wasm32-unknown-unknown` using one of these commands according to your web browser:
+
+```zsh
+# Run specific tests within web browser (WebAssembly target only)
+wasm-pack test wasm-money --safari --headless
+wasm-pack test wasm-money --chrome --headless
+wasm-pack test wasm-money --firefox --headless
+```
+
+> Make sure to refresh your binary first with `wasm-pack build`, it seems not automatic this time...
+
+## Edit sources
+
+As the *Node* server automatically fetches the folder `wasm-money/pkg`, you just need to [build the WebAssembly binary](#build-webAssembly-binary-and-javascript-interface) to refresh the web page once you edited sources.
+
+Enjoy! 🤠

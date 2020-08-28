@@ -1,7 +1,7 @@
-import { Account } from "money";
+import { AccountClient } from "money";
 
 // Singleton
-const account = new Account()
+const account = new AccountClient()
 // Tags management
 const inputTag = document.getElementById("input-tag");
 const tags = document.getElementById("tag-list");
@@ -29,24 +29,24 @@ const refreshList = (node, items) => {
 
 addTag.addEventListener("click", event => {
     account.add_tag(inputTag.value.toString())
-    refreshList(tags, account.export_tags())
+    refreshList(tags, account.tags())
     inputTag.value = "";
 });
 
 removeTag.addEventListener("click", event => {
     account.remove_tag(inputTag.value)
-    refreshList(tags, account.export_tags())
+    refreshList(tags, account.tags())
     inputTag.value = "";
 });
 
 addResource.addEventListener("click", event => {
     account.add_resource(inputResource.value.toString())
-    refreshList(resources, account.export_resources())
+    refreshList(resources, account.resources())
     inputResource.value = "";
 });
 
 removeResource.addEventListener("click", event => {
     account.remove_resource(inputResource.value)
-    refreshList(resources, account.export_resources())
+    refreshList(resources, account.resources())
     inputResource.value = "";
 });
