@@ -2,9 +2,11 @@
 
 use chrono::{Local, NaiveDate};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "wasmbind")]
+use wasm_bindgen::prelude::*;
 
 /// Data associated to a unique transaction.
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct Order {
     pub date: Option<NaiveDate>,
     pub description: String,
@@ -16,6 +18,7 @@ pub struct Order {
 }
 
 /// Different states for a given transaction.
+#[cfg_attr(feature = "wasmbind", wasm_bindgen)]
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 pub enum TransactionState {
     /// No payment performed yet.

@@ -6,7 +6,7 @@ mod account {
     use super::*;
 
     #[test]
-    fn add_remove_clean_orders() {
+    fn add_hide_delete_orders() {
         let mut account = Account::create();
 
         account.add_order();
@@ -58,121 +58,6 @@ mod account {
     }
 
     #[test]
-    fn remove_tag_used_by_orders() {
-        let mut account = Account::create();
-        let mut expected_orders = [Order::default(), Order::default()];
-        let tags = [
-            String::from("Food"),
-            String::from("Service"),
-            String::from("Video Games"),
-            String::from("Transport"),
-        ];
-
-        tags.iter().for_each(|tag| {
-            account.add_tag(tag.as_str());
-        });
-        account.add_order();
-        account
-            .get_order_mut(0)
-            .unwrap()
-            .add_tag(tags[0].as_str(), &tags);
-        account
-            .get_order_mut(0)
-            .unwrap()
-            .add_tag(tags[1].as_str(), &tags);
-        account.add_order();
-        account
-            .get_order_mut(1)
-            .unwrap()
-            .add_tag(tags[2].as_str(), &tags);
-        account
-            .get_order_mut(1)
-            .unwrap()
-            .add_tag(tags[1].as_str(), &tags);
-
-        expected_orders[0].add_tag(tags[0].as_str(), &tags);
-        expected_orders[0].add_tag(tags[1].as_str(), &tags);
-        expected_orders[1].add_tag(tags[2].as_str(), &tags);
-        expected_orders[1].add_tag(tags[1].as_str(), &tags);
-        assert_eq!(account.orders(), expected_orders);
-
-        assert_eq!(account.remove_tag(tags[0].as_str()), None);
-
-        expected_orders[0].remove_tag(tags[0].as_str());
-        assert_eq!(account.orders(), expected_orders);
-
-        assert_eq!(account.remove_tag(tags[1].as_str()), None);
-
-        expected_orders[0].remove_tag(tags[1].as_str());
-        expected_orders[1].remove_tag(tags[1].as_str());
-        assert_eq!(account.orders(), expected_orders);
-    }
-
-    #[test]
-    fn remove_resource_used_by_orders() {
-        let mut account = Account::create();
-        let mut expected_orders = [
-            Order::default(),
-            Order::default(),
-            Order::default(),
-            Order::default(),
-        ];
-        let resources = [
-            String::from("Bank"),
-            String::from("Cash"),
-            String::from("Gift Check"),
-        ];
-
-        resources.iter().for_each(|resource| {
-            account.add_resource(resource.as_str());
-        });
-        account.add_order();
-        account
-            .get_order_mut(0)
-            .unwrap()
-            .set_resource(resources[0].as_str(), &resources);
-        account.add_order();
-        account
-            .get_order_mut(1)
-            .unwrap()
-            .set_resource(resources[1].as_str(), &resources);
-        account.add_order();
-        account
-            .get_order_mut(2)
-            .unwrap()
-            .set_resource(resources[1].as_str(), &resources);
-        account.add_order();
-        account
-            .get_order_mut(3)
-            .unwrap()
-            .set_resource(resources[2].as_str(), &resources);
-
-        assert_eq!(account.remove_resource(resources[1].as_str()), None);
-
-        expected_orders[0].set_resource(resources[0].as_str(), &resources);
-        expected_orders[3].set_resource(resources[2].as_str(), &resources);
-        assert_eq!(account.orders(), expected_orders);
-    }
-
-    #[test]
-    fn check_all_orders() {
-        let mut account = Account::create();
-        let mut expected_orders = [Order::default(), Order::default(), Order::default()];
-
-        account.add_order();
-        account.get_order_mut(0).unwrap().description = "Car gas".into();
-        account.add_order();
-        account.get_order_mut(1).unwrap().description = "Gamepass Ultimate".into();
-        account.add_order();
-        account.get_order_mut(2).unwrap().description = "Home".into();
-
-        expected_orders[0].description = "Car gas".into();
-        expected_orders[1].description = "Gamepass Ultimate".into();
-        expected_orders[2].description = "Home".into();
-        assert_eq!(account.orders(), expected_orders);
-    }
-
-    #[test]
     fn check_filtered_orders() {
         let mut account = Account::create();
         let mut expected_orders: Vec<(usize, Order)> = vec![
@@ -211,7 +96,6 @@ mod account {
             .get_order_mut(0)
             .unwrap()
             .add_tag(tags[3].as_str(), &tags);
-
         account.add_order();
         account.get_order_mut(1).unwrap().description = "Gamepass Ultimate".into();
         account
@@ -222,7 +106,6 @@ mod account {
             .get_order_mut(1)
             .unwrap()
             .add_tag(tags[1].as_str(), &tags);
-
         account.add_order();
         account.get_order_mut(2).unwrap().description = "Metro".into();
         account
@@ -237,7 +120,6 @@ mod account {
             .get_order_mut(2)
             .unwrap()
             .add_tag(tags[3].as_str(), &tags);
-
         account.add_order();
         account.get_order_mut(3).unwrap().description = "Pasta & Eggs".into();
         account

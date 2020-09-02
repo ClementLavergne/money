@@ -5,13 +5,13 @@
 use js_sys::Array;
 use wasm_bindgen::prelude::JsValue;
 use wasm_bindgen_test::*;
-use wasm_money::AccountClient;
+use wasm_money::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
 pub fn check_tags() {
-    let mut account = AccountClient::create();
+    let mut account = Account::create();
 
     account.add_tag("Food");
     account.add_tag("Transport");
@@ -24,7 +24,7 @@ pub fn check_tags() {
     expected.set(2, JsValue::from("Transport"));
     expected.set(3, JsValue::from("Video Games"));
 
-    assert_eq!(account.tags().to_vec(), expected.to_vec());
+    assert_eq!(get_account_tags(&account).to_vec(), expected.to_vec());
 
     account.remove_tag("Transport");
     account.remove_tag("Video Games");
@@ -33,12 +33,12 @@ pub fn check_tags() {
     expected.set(0, JsValue::from("Food"));
     expected.set(1, JsValue::from("Service"));
 
-    assert_eq!(account.tags().to_vec(), expected.to_vec());
+    assert_eq!(get_account_tags(&account).to_vec(), expected.to_vec());
 }
 
 #[wasm_bindgen_test]
 pub fn check_resources() {
-    let mut account = AccountClient::create();
+    let mut account = Account::create();
 
     account.add_resource("Bank");
     account.add_resource("Cash");
@@ -47,12 +47,12 @@ pub fn check_resources() {
     expected.set(0, JsValue::from("Bank"));
     expected.set(1, JsValue::from("Cash"));
 
-    assert_eq!(account.resources().to_vec(), expected.to_vec());
+    assert_eq!(get_account_resources(&account).to_vec(), expected.to_vec());
 
     account.remove_resource("Bank");
 
     let expected = Array::new();
     expected.set(0, JsValue::from("Cash"));
 
-    assert_eq!(account.resources().to_vec(), expected.to_vec());
+    assert_eq!(get_account_resources(&account).to_vec(), expected.to_vec());
 }

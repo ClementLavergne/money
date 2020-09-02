@@ -1,7 +1,22 @@
-import { AccountClient } from "money";
+import {
+    Account,
+    delete_account_order,
+    TransactionState,
+    set_account_order_date,
+    set_account_order_description,
+    set_account_order_amount,
+    set_account_order_resource,
+    set_account_order_tags,
+    set_account_order_state,
+    get_account_resources,
+    get_account_orders,
+    get_account_tags,
+    load_account_data,
+    serialize_account_as_yaml
+} from "money";
 
 // Singleton
-const account = new AccountClient()
+const account = new Account()
 // Tags management
 const inputTag = document.getElementById("input-tag");
 const tagsList = document.getElementById("tag-list");
@@ -45,7 +60,7 @@ const addOrderRow = (obj) => {
     date.value = obj.order.date;
     date.addEventListener('keyup', ({key}) => {
         if (key === "Enter") {
-            if (account.set_order_date(obj.id, date.value.toString())) {
+            if (set_account_order_date(account, obj.id, date.value.toString())) {
                 console.log("Order " + obj.id + " date: " + date.value.toString())
                 requestAnimationFrame(render);
             }
@@ -59,7 +74,7 @@ const addOrderRow = (obj) => {
     description.value = obj.order.description;
     description.addEventListener('keyup', ({key}) => {
         if (key === "Enter") {
-            if (account.set_order_description(obj.id, description.value.toString())) {
+            if (set_account_order_description(account, obj.id, description.value.toString())) {
                 console.log("Order " + obj.id + " description: " + description.value.toString())
                 requestAnimationFrame(render);
             }
@@ -78,7 +93,7 @@ const addOrderRow = (obj) => {
             }
 
             const float = parseFloat(amount.value);
-            if (account.set_order_amount(obj.id, float)) {
+            if (set_account_order_amount(account, obj.id, float)) {
                 console.log("Order " + obj.id + " amount: " + float.toFixed(2))
                 requestAnimationFrame(render);
             }
@@ -96,7 +111,7 @@ const addOrderRow = (obj) => {
     empty_option.text = "-";
     empty_option.disabled = true
     resource.appendChild(empty_option);
-    account.resources().forEach(function(item) {
+    get_account_resources(account).forEach(function(item) {
         var option = document.createElement("option");
         option.value = item;
         option.text = item;
@@ -108,7 +123,7 @@ const addOrderRow = (obj) => {
         resource.value = "-"
     }
     resource.addEventListener('change', function() {
-        if (account.set_order_resource(obj.id, this.value)) {
+        if (set_account_order_resource(account, obj.id, this.value)) {
             console.log("Order " + obj.id + " resource: " + this.value)
             requestAnimationFrame(render);
         }
@@ -118,7 +133,7 @@ const addOrderRow = (obj) => {
     // Tags
     var tags = document.createElement("select")
     tags.multiple = true
-    account.tags().forEach(function(item) {
+    get_account_tags(account).forEach(function(item) {
         var option = document.createElement("option");
         option.value = item;
         option.text = item;
@@ -136,7 +151,7 @@ const addOrderRow = (obj) => {
                      .filter((x) => x.selected)
                      .map((x)=>x.value)
 
-        if (account.set_order_tags(obj.id, selectedValues)) {
+        if (set_account_order_tags(account, obj.id, selectedValues)) {
             console.log("Order " + obj.id + " tags: " + selectedValues)
             requestAnimationFrame(render);
         }
@@ -145,18 +160,27 @@ const addOrderRow = (obj) => {
 
     // State
     var state = document.createElement("select");
-    const options = ["Pending", "InProgress", "Done"]
+    const nb_elements = Object.entries(TransactionState).length
+    const entries = Object.entries(TransactionState).slice((nb_elements / 2), nb_elements)
     var id = 0
-    for (const text of options) {
+    for (const entry of entries) {
         var option = document.createElement("option");
-        option.text = text
-        option.value = text
+        option.text = entry[0]
+        option.value = entry[0]
         id++
         state.appendChild(option)
     }
     state.value = obj.order.state;
     state.addEventListener('change', function() {
-        if (account.set_order_state(obj.id, this.value)) {
+        // Find corresponding index
+        var index = 0
+        for (const entry of entries) {
+            if (this.value == entry[0]) {
+                index = entry[1]
+                break
+            }
+        }
+        if (set_account_order_state(account, obj.id, index)) {
             console.log("Order " + obj.id + " state: " + this.value)
             requestAnimationFrame(render);
         }
@@ -168,7 +192,7 @@ const addOrderRow = (obj) => {
     remove_button.type = "button";
     remove_button.value = "remove";
     remove_button.addEventListener('click', event => {
-        if (account.delete_order(obj.id)) {
+        if (delete_account_order(account, obj.id)) {
             console.log("Order " + obj.id + ": removed!")
         }
         requestAnimationFrame(render);
@@ -177,31 +201,35 @@ const addOrderRow = (obj) => {
 }
 
 addTag.addEventListener("click", event => {
-    account.add_tag(inputTag.value.toString())
-    refreshList(tagsList, account.tags())
-    inputTag.value = "";
-    requestAnimationFrame(render);
+    if (account.add_tag(inputTag.value) == undefined) {
+        refreshList(tagsList, account.tags())
+        inputTag.value = "";
+        requestAnimationFrame(render);
+    }
 });
 
 removeTag.addEventListener("click", event => {
-    account.remove_tag(inputTag.value)
-    refreshList(tagsList, account.tags())
-    inputTag.value = "";
-    requestAnimationFrame(render);
+    if (account.remove_tag(inputTag.value) == undefined) {
+        refreshList(tagsList, account.tags())
+        inputTag.value = "";
+        requestAnimationFrame(render);
+    }
 });
 
 addResource.addEventListener("click", event => {
-    account.add_resource(inputResource.value.toString())
-    refreshList(resourcesList, account.resources())
-    inputResource.value = "";
-    requestAnimationFrame(render);
+    if (account.add_resource(inputResource.value) == undefined) {
+        refreshList(resourcesList, account.resources())
+        inputResource.value = "";
+        requestAnimationFrame(render);
+    }
 });
 
 removeResource.addEventListener("click", event => {
-    account.remove_resource(inputResource.value)
-    refreshList(resourcesList, account.resources())
-    inputResource.value = "";
-    requestAnimationFrame(render);
+    if (account.remove_resource(inputResource.value) == undefined) {
+        refreshList(resourcesList, account.resources())
+        inputResource.value = "";
+        requestAnimationFrame(render);
+    }
 });
 
 addOrder.addEventListener("click", event => {
@@ -219,7 +247,7 @@ loadData.addEventListener("change", function() {
     reader.onload = readerEvent => {
         var content = readerEvent.target.result;
 
-        if (account.load(content)) {
+        if (load_account_data(account, content)) {
             console.log("File '" + file + "' loaded!")
             requestAnimationFrame(render);
         }
@@ -244,27 +272,28 @@ downloadData.addEventListener("click", event => {
     const filename = prompt("Please enter file name:", "account-data.yml")
 
     if (filename != null) {
-        const data = account.serialize_account_yaml()
+        const data = serialize_account_as_yaml(account)
         download(filename, data);
     }
 });
 
 const render = () => {
     console.log("Render!")
-    refreshList(tagsList, account.tags())
-    refreshList(resourcesList, account.resources())
+    refreshList(tagsList, get_account_tags(account))
+    refreshList(resourcesList, get_account_resources(account))
 
     // Clear table rows
     for (var i=ordersTable.rows.length-1; i >=1; i--) {
         ordersTable.deleteRow(i);
     }
 
-    if (account.orders().length == 0) {
+    const orders = get_account_orders(account)
+    if (orders.length == 0) {
         pre.textContent = "No orders";
     } else {
         // Add table rows
         var text = "";
-        account.orders().forEach(function(item) {
+        orders.forEach(function(item) {
             var obj = JSON.parse(item);
             addOrderRow(obj);
 
