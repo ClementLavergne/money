@@ -6,6 +6,12 @@
     <link rel="stylesheet" type="text/css" href="style.css">
   </head>
   <body>
+    <h1>MONEY</h1>
+    <div>
+      <input type="file" id="load-data"></button>
+      <button type="button" id="download-data">download</button>
+    </div>
+    <h2>Configuration</h2>
     <div>
       <label for="tags">Tags:</label>
       <input type="text" list="tag-list" id="input-tag">
@@ -20,6 +26,25 @@
       <button type="button" id="add-resource">add</button>
       <button type="button" id="remove-resource">remove</button>
     </div>
+    <br /><br />
+    <h2>Editor</h2>
+    <button type="button" id="add-order">add order</button>
+    <table id="orders">
+        <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Resource</th>
+            <th>Tags</th>
+            <th>State</th>
+        </tr>
+    </table>
+    <br /><br />
+    <label for="total">Total:</label>
+    <pre id="sum-canvas"></pre>
+    <br /><br />
+    <h2>Debug</h2>
+    <pre id="money-canvas"></pre>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
     <script src="./bootstrap.js"></script>
   </body>
