@@ -165,22 +165,22 @@ mod account {
             ]
         );
 
-        account.toggle_resource("Bank");
+        account.toggle_resource_selection("Bank");
 
         assert_eq!(
             account.filtered_orders(),
             [(expected_orders[0].0, &expected_orders[0].1),]
         );
 
-        account.toggle_resource("Cash");
+        account.toggle_resource_selection("Cash");
 
         assert_eq!(
             account.filtered_orders(),
             [(expected_orders[3].0, &expected_orders[3].1),]
         );
 
-        account.toggle_resource("Bank");
-        account.toggle_tag("Transport");
+        account.toggle_resource_selection("Bank");
+        account.toggle_tag_selection("Transport");
 
         assert_eq!(
             account.filtered_orders(),
@@ -194,7 +194,7 @@ mod account {
             .get_order_mut(3)
             .unwrap()
             .set_resource(resources[0].as_str(), &resources);
-        account.toggle_resource("Cash");
+        account.toggle_resource_selection("Cash");
 
         // Update expected values
         expected_orders[3]
@@ -210,9 +210,9 @@ mod account {
             ]
         );
 
-        account.toggle_tag("Food");
-        account.toggle_tag("Service");
-        account.toggle_tag("Supermarket");
+        account.toggle_tag_selection("Food");
+        account.toggle_tag_selection("Service");
+        account.toggle_tag_selection("Supermarket");
 
         assert_eq!(
             account.filtered_orders(),
@@ -223,7 +223,7 @@ mod account {
             ]
         );
 
-        account.toggle_tag("Mom & Dad");
+        account.toggle_tag_selection("Mom & Dad");
 
         assert_eq!(account.filtered_orders().len(), 0);
 
@@ -279,7 +279,7 @@ mod account {
             ]
         );
 
-        account.toggle_state(TransactionState::Done);
+        account.toggle_order_state_selection(TransactionState::Done);
 
         assert_eq!(
             account.filtered_orders(),
@@ -289,7 +289,7 @@ mod account {
             ]
         );
 
-        account.toggle_state(TransactionState::InProgress);
+        account.toggle_order_state_selection(TransactionState::InProgress);
 
         assert_eq!(
             account.filtered_orders(),

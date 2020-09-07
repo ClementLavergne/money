@@ -2,11 +2,12 @@
 //!
 //! `money` is a collection of utilities to make tracking money expenses.
 
+pub mod ext;
 pub mod order;
 
+use ext::{Category, ExclusiveItemExt, ItemSelector, RequestFailure};
 use order::{Order, TransactionState};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::prelude::*;
@@ -18,46 +19,10 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(feature = "wasmbind", wasm_bindgen)]
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Account {
-    tags: BTreeMap<String, ItemSelector>,
-    resources: BTreeMap<String, ItemSelector>,
+    tags: Vec<Category>,
+    resources: Vec<Category>,
     states: [ItemSelector; 3],
     orders: Vec<Order>,
-}
-
-/// Stores current state of a given filter parameter.
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum ItemSelector {
-    Discarded,
-    Selected,
-}
-
-/// Defines error types.
-#[cfg_attr(feature = "wasmbind", wasm_bindgen)]
-#[derive(PartialEq, Debug)]
-pub enum RequestFailure {
-    /// User input is incorrect.
-    IncorrectArgument,
-    /// User input is empty.
-    EmptyArgument,
-    /// Specified item can not be removed as it does not exist.
-    UnknownItem,
-    /// Specified item can not be added as it already did.
-    ExistingItem,
-}
-
-impl ItemSelector {
-    /// Toggles the state.
-    fn toggle(&mut self) {
-        *self = match *self {
-            ItemSelector::Discarded => ItemSelector::Selected,
-            ItemSelector::Selected => ItemSelector::Discarded,
-        };
-    }
-
-    /// Forces the state to `Selected`.
-    fn clear(&mut self) {
-        *self = ItemSelector::Selected;
-    }
 }
 
 /// `wasm_bindgen` compatible functions.
@@ -70,8 +35,8 @@ impl Account {
         console_error_panic_hook::set_once();
 
         Account {
-            tags: BTreeMap::new(),
-            resources: BTreeMap::new(),
+            tags: Vec::new(),
+            resources: Vec::new(),
             states: [
                 ItemSelector::Selected,
                 ItemSelector::Selected,
@@ -81,30 +46,14 @@ impl Account {
         }
     }
 
-    /// Adds a new tag.
+    /// Adds a valid tag if it doesn't exist yet.
     pub fn add_tag(&mut self, tag: &str) -> Option<RequestFailure> {
-        if !tag.is_empty() {
-            if !tag.chars().all(char::is_whitespace) {
-                if self
-                    .tags
-                    .insert(tag.to_string(), ItemSelector::Selected)
-                    .is_none()
-                {
-                    None
-                } else {
-                    Some(RequestFailure::ExistingItem)
-                }
-            } else {
-                Some(RequestFailure::IncorrectArgument)
-            }
-        } else {
-            Some(RequestFailure::EmptyArgument)
-        }
+        self.tags.add_exclusive(tag)
     }
 
-    /// Removes a tag.
+    /// Removes a tag everywhere.
     pub fn remove_tag(&mut self, tag: &str) -> Option<RequestFailure> {
-        if self.tags.remove(tag).is_some() {
+        if self.tags.remove_exclusive(tag).is_none() {
             // Remove related tag from orders
             self.orders.iter_mut().for_each(|x| {
                 x.remove_tag(tag);
@@ -116,36 +65,18 @@ impl Account {
     }
 
     // Filters in or out the selected tag.
-    pub fn toggle_tag(&mut self, tag: &str) {
-        if let Some(value) = self.tags.get_mut(tag) {
-            value.toggle();
-        }
+    pub fn toggle_tag_selection(&mut self, tag: &str) -> Option<RequestFailure> {
+        self.tags.toggle_selection(tag)
     }
 
-    /// Adds a new resource.
+    /// Adds a valid resource if it doesn't exist yet.
     pub fn add_resource(&mut self, resource: &str) -> Option<RequestFailure> {
-        if !resource.is_empty() {
-            if !resource.chars().all(char::is_whitespace) {
-                if self
-                    .resources
-                    .insert(resource.to_string(), ItemSelector::Selected)
-                    .is_none()
-                {
-                    None
-                } else {
-                    Some(RequestFailure::ExistingItem)
-                }
-            } else {
-                Some(RequestFailure::IncorrectArgument)
-            }
-        } else {
-            Some(RequestFailure::EmptyArgument)
-        }
+        self.resources.add_exclusive(resource)
     }
 
-    /// Removes a resource.
+    /// Removes a resource evrywhere.
     pub fn remove_resource(&mut self, resource: &str) -> Option<RequestFailure> {
-        if self.resources.remove(resource).is_some() {
+        if self.resources.remove_exclusive(resource).is_none() {
             // Remove related resource from orders
             self.orders.iter_mut().for_each(|x| {
                 if x.resource() == &Some(resource.to_string()) {
@@ -159,14 +90,12 @@ impl Account {
     }
 
     // Filters in or out the selected resource.
-    pub fn toggle_resource(&mut self, resource: &str) {
-        if let Some(value) = self.resources.get_mut(resource) {
-            value.toggle();
-        }
+    pub fn toggle_resource_selection(&mut self, resource: &str) -> Option<RequestFailure> {
+        self.resources.toggle_selection(resource)
     }
 
     // Filters in or out the selected transaction state.
-    pub fn toggle_state(&mut self, state: TransactionState) {
+    pub fn toggle_order_state_selection(&mut self, state: TransactionState) {
         self.states[state as usize].toggle();
     }
 
@@ -185,9 +114,11 @@ impl Account {
         self.tags
             .iter_mut()
             .chain(self.resources.iter_mut())
-            .for_each(|(_, state)| state.clear());
+            .for_each(|item| item.1 = ItemSelector::Selected);
 
-        self.states.iter_mut().for_each(|state| state.clear());
+        self.states
+            .iter_mut()
+            .for_each(|state| *state = ItemSelector::Selected);
     }
 
     /// Sums each order amount.
@@ -198,12 +129,12 @@ impl Account {
 
 impl Account {
     /// Returns available tags.
-    pub fn tags(&self) -> &BTreeMap<String, ItemSelector> {
+    pub fn tags(&self) -> &Vec<Category> {
         &self.tags
     }
 
     /// Returns available resources.
-    pub fn resources(&self) -> &BTreeMap<String, ItemSelector> {
+    pub fn resources(&self) -> &Vec<Category> {
         &self.resources
     }
 
@@ -219,11 +150,12 @@ impl Account {
 
     /// Returns selected orders with their associated id.
     pub fn filtered_orders(&self) -> Vec<(usize, &Order)> {
-        let filter_selected = |hash: &BTreeMap<String, ItemSelector>| {
-            hash.iter()
-                .filter_map(|(key, value)| {
-                    if let ItemSelector::Selected = value {
-                        Some(key.clone())
+        let filter_selected = |vector: &Vec<Category>| {
+            vector
+                .iter()
+                .filter_map(|item| {
+                    if let ItemSelector::Selected = item.1 {
+                        Some(item.0.clone())
                     } else {
                         None
                     }
@@ -310,251 +242,10 @@ impl TryFrom<&str> for Account {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
 
     mod account {
         use super::*;
-
-        #[test]
-        fn add_valid_resource() {
-            let resources = [
-                "Bank 1".to_string(),
-                "Bank 2".to_string(),
-                "Cash".to_string(),
-            ];
-            let mut account = Account {
-                resources: resources[..2]
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(account.add_resource(&resources[2]), None);
-            assert_eq!(
-                account.resources,
-                resources
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
-
-        #[test]
-        fn remove_known_resource() {
-            let resources = [
-                "Bank 1".to_string(),
-                "Bank 2".to_string(),
-                "Cash".to_string(),
-            ];
-            let mut account = Account {
-                resources: resources
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(account.remove_resource(&resources[2]), None);
-            assert_eq!(
-                account.resources,
-                resources[..2]
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
-
-        #[test]
-        fn discard_adding_existing_resource() {
-            let resources = [
-                "Bank 1".to_string(),
-                "Bank 2".to_string(),
-                "Cash".to_string(),
-            ];
-            let mut account = Account {
-                resources: resources
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(
-                account.add_resource(&resources[2]),
-                Some(RequestFailure::ExistingItem)
-            );
-            assert_eq!(
-                account.resources,
-                resources
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
-
-        #[test]
-        fn discard_adding_empty_resource() {
-            let mut account = Account::create();
-
-            assert_eq!(
-                account.add_resource(""),
-                Some(RequestFailure::EmptyArgument)
-            );
-            assert_eq!(account.resources, BTreeMap::new());
-        }
-
-        #[test]
-        fn discard_adding_incorrect_resource() {
-            let mut account = Account::create();
-
-            assert_eq!(
-                account.add_resource(" "),
-                Some(RequestFailure::IncorrectArgument)
-            );
-            assert_eq!(account.tags, BTreeMap::new());
-        }
-
-        #[test]
-        fn discard_removing_unknown_resource() {
-            let resources = [
-                "Bank 1".to_string(),
-                "Bank 2".to_string(),
-                "Cash".to_string(),
-            ];
-            let mut account = Account {
-                resources: resources
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(
-                account.remove_tag("Unknown tag!"),
-                Some(RequestFailure::UnknownItem)
-            );
-            assert_eq!(
-                account.resources,
-                resources
-                    .iter()
-                    .map(|resource| (resource.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
-
-        #[test]
-        fn add_valid_tag() {
-            let tags = [
-                "Food".to_string(),
-                "Service".to_string(),
-                "Games".to_string(),
-            ];
-            let mut account = Account {
-                tags: tags[..2]
-                    .iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(account.add_tag(&tags[2]), None);
-            assert_eq!(
-                account.tags,
-                tags.iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
-
-        #[test]
-        fn remove_known_tag() {
-            let tags = [
-                "Food".to_string(),
-                "Service".to_string(),
-                "Games".to_string(),
-            ];
-            let mut account = Account {
-                tags: tags
-                    .iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(account.remove_tag(&tags[2]), None);
-            assert_eq!(
-                account.tags,
-                tags[..2]
-                    .iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
-
-        #[test]
-        fn discard_adding_existing_tag() {
-            let tags = ["Food".to_string(), "Service".to_string()];
-            let mut account = Account {
-                tags: tags
-                    .iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(
-                account.add_tag(&tags[1]),
-                Some(RequestFailure::ExistingItem)
-            );
-            assert_eq!(
-                account.tags,
-                tags.iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
-
-        #[test]
-        fn discard_adding_empty_tag() {
-            let mut account = Account::create();
-
-            assert_eq!(account.add_tag(""), Some(RequestFailure::EmptyArgument));
-            assert_eq!(account.tags, BTreeMap::new());
-        }
-
-        #[test]
-        fn discard_adding_incorrect_tag() {
-            let mut account = Account::create();
-
-            assert_eq!(
-                account.add_tag(" "),
-                Some(RequestFailure::IncorrectArgument)
-            );
-            assert_eq!(account.tags, BTreeMap::new());
-        }
-
-        #[test]
-        fn discard_removing_unknown_tag() {
-            let tags = ["Food".to_string(), "Service".to_string()];
-            let mut account = Account {
-                tags: tags
-                    .iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect(),
-                ..Account::create()
-            };
-
-            assert_eq!(
-                account.remove_tag("Unknown tag!"),
-                Some(RequestFailure::UnknownItem)
-            );
-            assert_eq!(
-                account.tags,
-                tags.iter()
-                    .map(|tag| (tag.clone(), ItemSelector::Selected))
-                    .collect()
-            );
-        }
 
         #[test]
         fn remove_resource_used_by_orders() {
@@ -569,12 +260,15 @@ mod tests {
                 String::from("Cash"),
                 String::from("Gift Check"),
             ];
-            let mut hashmap: BTreeMap<String, ItemSelector> = BTreeMap::new();
+            let mut filters: Vec<Category> = Vec::new();
             resources.iter().for_each(|resource| {
-                hashmap.insert(resource.clone(), ItemSelector::Selected);
+                filters.push(Category {
+                    0: resource.clone(),
+                    1: ItemSelector::Selected,
+                });
             });
             let mut account = Account {
-                resources: hashmap,
+                resources: filters,
                 ..Account::create()
             };
 
@@ -603,12 +297,15 @@ mod tests {
                 String::from("Video Games"),
                 String::from("Transport"),
             ];
-            let mut hashmap: BTreeMap<String, ItemSelector> = BTreeMap::new();
+            let mut filters: Vec<Category> = Vec::new();
             tags.iter().for_each(|tag| {
-                hashmap.insert(tag.clone(), ItemSelector::Selected);
+                filters.push(Category {
+                    0: tag.clone(),
+                    1: ItemSelector::Selected,
+                });
             });
             let mut account = Account {
-                tags: hashmap,
+                tags: filters,
                 ..Account::create()
             };
 
@@ -670,20 +367,20 @@ mod tests {
             expected_orders[1].set_resource(resources[1].as_str(), &resources);
             expected_orders[2].set_resource(resources[0].as_str(), &resources);
 
-            let mut hashmap: BTreeMap<String, ItemSelector> = BTreeMap::new();
+            let mut filters: Vec<Category> = Vec::new();
             resources.iter().for_each(|resource| {
-                hashmap.insert(
-                    resource.clone(),
-                    if resource == &resources[0] {
+                filters.push(Category {
+                    0: resource.clone(),
+                    1: if resource == &resources[0] {
                         ItemSelector::Selected
                     } else {
                         ItemSelector::Discarded
                     },
-                );
+                });
             });
 
             let account = Account {
-                resources: hashmap,
+                resources: filters,
                 orders: expected_orders.to_vec(),
                 ..Account::create()
             };
@@ -710,20 +407,20 @@ mod tests {
             expected_orders[2].add_tag(tags[1].as_str(), &tags);
             expected_orders[2].add_tag(tags[0].as_str(), &tags);
 
-            let mut hashmap: BTreeMap<String, ItemSelector> = BTreeMap::new();
+            let mut filters: Vec<Category> = Vec::new();
             tags.iter().for_each(|tag| {
-                hashmap.insert(
-                    tag.clone(),
-                    if tag == &tags[0] || tag == &tags[2] {
+                filters.push(Category {
+                    0: tag.clone(),
+                    1: if tag == &tags[0] {
                         ItemSelector::Selected
                     } else {
                         ItemSelector::Discarded
                     },
-                );
+                });
             });
 
             let account = Account {
-                tags: hashmap,
+                tags: filters,
                 orders: expected_orders.to_vec(),
                 ..Account::create()
             };
@@ -743,13 +440,22 @@ mod tests {
         #[test]
         fn save_load_data() {
             let mut saved_account = Account::create();
-            let resources = ["Bank".to_string(), "Cash".to_string()];
+            let resources = [
+                "Bank I".to_string(),
+                "Cash".to_string(),
+                "Bank II".to_string(),
+                "Vacation Check".to_string(),
+                "Gift Card".to_string(),
+            ];
             let tags = [
                 "Food".to_string(),
                 "Service".to_string(),
                 "Video Games".to_string(),
                 "Transport".to_string(),
-                "Car".to_string(),
+                "My Awesome Car".to_string(),
+                "Credits".to_string(),
+                "House".to_string(),
+                "Mum & Dad".to_string(),
             ];
 
             resources.iter().for_each(|resource| {
@@ -769,11 +475,28 @@ mod tests {
 
             saved_account.add_order();
             saved_account.orders[1].description = "GamePass Ultimate".into();
-            saved_account.orders[1].set_resource(resources[0].as_str(), &resources);
+            saved_account.orders[1].set_resource(resources[1].as_str(), &resources);
             saved_account.orders[1].add_tag(tags[1].as_str(), &tags);
             saved_account.orders[1].add_tag(tags[2].as_str(), &tags);
             saved_account.orders[1].amount = 14.99;
             saved_account.orders[1].set_state(TransactionState::Done);
+
+            saved_account.add_order();
+            saved_account.orders[2].description = "Loan".into();
+            saved_account.orders[2].set_resource(resources[1].as_str(), &resources);
+            saved_account.orders[2].add_tag(tags[5].as_str(), &tags);
+            saved_account.orders[2].add_tag(tags[6].as_str(), &tags);
+            saved_account.orders[2].amount = -600.00;
+            saved_account.orders[2].set_state(TransactionState::Pending);
+            saved_account.orders[2].date = Some(NaiveDate::from_ymd(2020, 10, 2));
+
+            saved_account.add_order();
+            saved_account.orders[3].description = "My anniversary".into();
+            saved_account.orders[3].set_resource(resources[4].as_str(), &resources);
+            saved_account.orders[3].add_tag(tags[7].as_str(), &tags);
+            saved_account.orders[3].amount = 50.00;
+            saved_account.orders[3].set_state(TransactionState::Pending);
+            saved_account.orders[3].date = Some(NaiveDate::from_ymd(2020, 10, 11));
 
             // Serialize over a file
             if let Err(error) = saved_account.save_file(Path::new("data.yml")) {

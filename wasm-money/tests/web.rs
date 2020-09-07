@@ -20,8 +20,8 @@ pub fn check_tags() {
 
     let expected = Array::new();
     expected.set(0, JsValue::from("Food"));
-    expected.set(1, JsValue::from("Service"));
-    expected.set(2, JsValue::from("Transport"));
+    expected.set(1, JsValue::from("Transport"));
+    expected.set(2, JsValue::from("Service"));
     expected.set(3, JsValue::from("Video Games"));
 
     assert_eq!(get_account_tags(&account).to_vec(), expected.to_vec());

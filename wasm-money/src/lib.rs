@@ -7,6 +7,7 @@ mod utils;
 
 use chrono::NaiveDate;
 use js_sys::Array;
+use rust_money::ext::ExclusiveItemExt;
 use rust_money::order::{Order, TransactionState};
 pub use rust_money::Account;
 use std::convert::TryFrom;
@@ -38,21 +39,13 @@ pub fn load_account_data(account: &mut Account, data: &str) -> bool {
 /// Returns tags as `JsValues`.
 #[wasm_bindgen]
 pub fn get_account_tags(account: &Account) -> Array {
-    account
-        .tags()
-        .iter()
-        .map(|(key, _)| JsValue::from(key))
-        .collect()
+    account.tags().js_keys()
 }
 
 /// Returns resources as `JsValues`.
 #[wasm_bindgen]
 pub fn get_account_resources(account: &Account) -> Array {
-    account
-        .resources()
-        .iter()
-        .map(|(key, _)| JsValue::from(key))
-        .collect()
+    account.resources().js_keys()
 }
 
 /// Exports all orders as `Array`.
@@ -139,7 +132,7 @@ pub fn set_account_order_amount(account: &mut Account, index: usize, amount: f32
 #[wasm_bindgen]
 pub fn set_account_order_resource(account: &mut Account, index: usize, resource: &str) -> bool {
     // Extract available strings.
-    let available_resources = account.resources().keys().cloned().collect::<Vec<String>>();
+    let available_resources = account.resources().keys();
 
     if let Some(order) = account.get_order_mut(index) {
         order.set_resource(resource, available_resources.as_slice());
@@ -153,7 +146,7 @@ pub fn set_account_order_resource(account: &mut Account, index: usize, resource:
 #[wasm_bindgen]
 pub fn set_account_order_tags(account: &mut Account, index: usize, tags: Array) -> bool {
     // Extract available strings.
-    let available_tags = account.tags().keys().cloned().collect::<Vec<String>>();
+    let available_tags = account.tags().keys();
 
     if let Some(order) = account.get_order_mut(index) {
         // Clear all tags
