@@ -143,6 +143,10 @@ pub fn set_account_order_resource(account: &mut Account, index: usize, resource:
 }
 
 /// Sets tags of a selected order.
+///
+/// # Return
+/// * `false` if at least one tag does not match with available ones, but correct tags are still added.
+/// * `true` otherwise.
 #[wasm_bindgen]
 pub fn set_account_order_tags(account: &mut Account, index: usize, tags: Array) -> bool {
     // Extract available strings.
@@ -154,7 +158,11 @@ pub fn set_account_order_tags(account: &mut Account, index: usize, tags: Array) 
         // Add each tag and make sure that no error happens
         let available_tags = available_tags.as_slice();
         !tags.iter().fold(false, |acc, value| {
-            acc | order.add_tag(value.as_string().unwrap().as_str(), available_tags)
+            acc | if let Some(tag) = value.as_string() {
+                !order.add_tag(tag.as_str(), available_tags)
+            } else {
+                false
+            }
         })
     } else {
         false
