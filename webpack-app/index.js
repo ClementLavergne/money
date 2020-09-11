@@ -204,7 +204,7 @@ const addOrderRow = (obj) => {
 
 addTag.addEventListener("click", event => {
     if (account.add_tag(inputTag.value) == undefined) {
-        refreshList(tagsList, account.tags())
+        refreshList(tagsList, get_account_tags(account))
         inputTag.value = ""
         requestAnimationFrame(render)
     }
@@ -212,7 +212,7 @@ addTag.addEventListener("click", event => {
 
 removeTag.addEventListener("click", event => {
     if (account.remove_tag(inputTag.value) == undefined) {
-        refreshList(tagsList, account.tags())
+        refreshList(tagsList, get_account_tags(account))
         inputTag.value = ""
         requestAnimationFrame(render)
     }
@@ -220,7 +220,7 @@ removeTag.addEventListener("click", event => {
 
 addResource.addEventListener("click", event => {
     if (account.add_resource(inputResource.value) == undefined) {
-        refreshList(resourcesList, account.resources())
+        refreshList(resourcesList, get_account_resources(account))
         inputResource.value = ""
         requestAnimationFrame(render)
     }
@@ -228,7 +228,7 @@ addResource.addEventListener("click", event => {
 
 removeResource.addEventListener("click", event => {
     if (account.remove_resource(inputResource.value) == undefined) {
-        refreshList(resourcesList, account.resources())
+        refreshList(resourcesList, get_account_resources(account))
         inputResource.value = ""
         requestAnimationFrame(render)
     }
