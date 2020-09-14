@@ -11,23 +11,50 @@
       <input type="file" id="load-data"></button>
       <button type="button" id="download-data">download</button>
     </div>
+
     <h2>Configuration</h2>
-    <div>
-      <label for="tags">Tags:</label>
-      <input type="text" list="tag-list" id="input-tag">
-      <datalist id="tag-list"></datalist>
-      <button type="button" id="add-tag">add</button>
-      <button type="button" id="remove-tag">remove</button>
+    <div class="container">
+      <fieldset class="element" id="tags-manager">
+        <legend>Tags</legend>
+        <input type="text" list="tag-list" id="input-tag">
+        <datalist id="tag-list"></datalist>
+        <button type="button" id="add-tag">add</button>
+        <button type="button" id="remove-tag">remove</button>
+        <button type="button" id="tags-filter-switch">enable filter</button>
+        <br /><br />
+      </fieldset>
+      <fieldset class="element" id="resources-manager">
+        <legend>Resources</legend>
+        <input type="text" list="resource-list" id="input-resource">
+        <datalist id="resource-list"></datalist>
+        <button type="button" id="add-resource">add</button>
+        <button type="button" id="remove-resource">remove</button>
+        <button type="button" id="resources-filter-switch">enable filter</button>
+        <br /><br />
+      </fieldset>
+      <fieldset class="element" id="date-manager">
+        <legend>Orders date range</legend>
+        <button type="button" id="date-filter-switch">enable filter</button>
+        <br /><br />
+      </fieldset>
+      <fieldset class="element" id="visibility-manager">
+        <legend>Orders visibility</legend>
+        <input type="radio" id="all-radio" name="visibility" value="all">
+        <label for="male">All</label><br>
+        <input type="radio" id="active-radio" name="visibility" value="active">
+        <label for="female">Active ones</label><br>
+        <input type="radio" id="removed-radio" name="visibility" value="removed">
+        <label for="other">Removed ones</label>
+        <br /><br />
+      </fieldset>
+      <fieldset class="element" id="states-manager">
+        <legend>Orders states</legend>
+      </fieldset>
     </div>
-    <div>
-      <label for="resources">Resources:</label>
-      <input type="text" list="resource-list" id="input-resource">
-      <datalist id="resource-list"></datalist>
-      <button type="button" id="add-resource">add</button>
-      <button type="button" id="remove-resource">remove</button>
-    </div>
-    <br /><br />
+
     <h2>Editor</h2>
+    <label for="total">Total:</label>
+    <pre id="sum-canvas"></pre>
     <button type="button" id="add-order">add order</button>
     <table id="orders">
         <tr>
@@ -40,11 +67,6 @@
         </tr>
     </table>
     <br /><br />
-    <label for="total">Total:</label>
-    <pre id="sum-canvas"></pre>
-    <br /><br />
-    <h2>Debug</h2>
-    <pre id="money-canvas"></pre>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
     <script src="./bootstrap.js"></script>
   </body>

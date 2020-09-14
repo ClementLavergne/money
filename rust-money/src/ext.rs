@@ -2,7 +2,6 @@
 
 #[cfg(feature = "wasmbind")]
 use js_sys::Array;
-use serde::{Deserialize, Serialize};
 #[cfg(feature = "wasmbind")]
 use wasm_bindgen::prelude::*;
 
@@ -20,46 +19,21 @@ pub enum RequestFailure {
     ExistingItem,
 }
 
-/// Extension for `Vec<Category>` to manage unique keys.
+/// Extension for `Vec<String>` to manage unique keys.
 pub trait ExclusiveItemExt {
     fn add_exclusive(&mut self, key: &str) -> Option<RequestFailure>;
     fn remove_exclusive(&mut self, key: &str) -> Option<RequestFailure>;
-    fn toggle_selection(&mut self, key: &str) -> Option<RequestFailure>;
-    fn keys(&self) -> Vec<String>;
     #[cfg(feature = "wasmbind")]
-    fn js_keys(&self) -> Array;
+    fn sorted_keys(&self) -> Array;
 }
 
-/// Stores current state of a given filter parameter.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub enum ItemSelector {
-    /// Filter out.
-    Discarded,
-    /// Filter in.
-    Selected,
-}
-
-/// Key-value tuple struct which manages either *tag* or *resource*.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct Category(pub String, pub ItemSelector);
-
-impl ItemSelector {
-    /// Toggles the state.
-    pub fn toggle(&mut self) {
-        *self = match *self {
-            ItemSelector::Discarded => ItemSelector::Selected,
-            ItemSelector::Selected => ItemSelector::Discarded,
-        };
-    }
-}
-
-impl ExclusiveItemExt for Vec<Category> {
+impl ExclusiveItemExt for Vec<String> {
     /// Adds a new item if not exists yet.
     fn add_exclusive(&mut self, key: &str) -> Option<RequestFailure> {
         if !key.is_empty() {
             if !key.chars().all(char::is_whitespace) {
-                if !self.iter().any(|item| item.0 == key) {
-                    self.push(Category(key.into(), ItemSelector::Selected));
+                if !self.iter().any(|item| item == key) {
+                    self.push(key.into());
                     None
                 } else {
                     Some(RequestFailure::ExistingItem)
@@ -74,7 +48,7 @@ impl ExclusiveItemExt for Vec<Category> {
 
     /// Removes an existing item.
     fn remove_exclusive(&mut self, key: &str) -> Option<RequestFailure> {
-        if let Some(index) = self.iter().position(|item| item.0 == key) {
+        if let Some(index) = self.iter().position(|item| item == key) {
             self.remove(index);
             None
         } else {
@@ -82,25 +56,12 @@ impl ExclusiveItemExt for Vec<Category> {
         }
     }
 
-    // Toggles selection of a key
-    fn toggle_selection(&mut self, key: &str) -> Option<RequestFailure> {
-        if let Some(index) = self.iter().position(|item| item.0 == key) {
-            self.get_mut(index).unwrap().1.toggle();
-            None
-        } else {
-            Some(RequestFailure::UnknownItem)
-        }
-    }
-
-    // Export filter keys.
-    fn keys(&self) -> Vec<String> {
-        self.iter().map(|item| item.0.clone()).collect()
-    }
-
-    // Export filter keys.
+    // Export sorted filter keys.
     #[cfg(feature = "wasmbind")]
-    fn js_keys(&self) -> Array {
-        self.iter().map(|item| JsValue::from(&item.0)).collect()
+    fn sorted_keys(&self) -> Array {
+        let mut sorted_vec = self.clone();
+        sorted_vec.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        sorted_vec.iter().map(JsValue::from).collect()
     }
 }
 
@@ -111,37 +72,37 @@ mod tests {
     #[test]
     fn add_valid_key() {
         let items = (0..3)
-            .map(|id| Category(format!("Key {}", id), ItemSelector::Selected))
-            .collect::<Vec<Category>>();
+            .map(|id| format!("Key {}", id))
+            .collect::<Vec<String>>();
 
-        let mut list: Vec<Category> = items.as_slice()[..2].to_vec();
+        let mut list: Vec<String> = items.as_slice()[..2].to_vec();
 
-        assert_eq!(list.add_exclusive(items[2].0.as_str()), None);
+        assert_eq!(list.add_exclusive(items[2].as_str()), None);
         assert_eq!(list, items);
     }
 
     #[test]
     fn remove_known_key() {
         let items = (0..3)
-            .map(|id| Category(format!("Key {}", id), ItemSelector::Selected))
-            .collect::<Vec<Category>>();
+            .map(|id| format!("Key {}", id))
+            .collect::<Vec<String>>();
 
-        let mut list: Vec<Category> = items.clone();
+        let mut list = items.clone();
 
-        assert_eq!(list.remove_exclusive(items[2].0.as_str()), None);
+        assert_eq!(list.remove_exclusive(items[2].as_str()), None);
         assert_eq!(list, items.as_slice()[..2].to_vec());
     }
 
     #[test]
     fn discard_adding_existing_key() {
         let items = (0..3)
-            .map(|id| Category(format!("Key {}", id), ItemSelector::Selected))
-            .collect::<Vec<Category>>();
+            .map(|id| format!("Key {}", id))
+            .collect::<Vec<String>>();
 
-        let mut list: Vec<Category> = items.clone();
+        let mut list = items.clone();
 
         assert_eq!(
-            list.add_exclusive(items[2].0.as_str()),
+            list.add_exclusive(items[2].as_str()),
             Some(RequestFailure::ExistingItem)
         );
         assert_eq!(list, items);
@@ -149,30 +110,30 @@ mod tests {
 
     #[test]
     fn discard_adding_empty_key() {
-        let mut list: Vec<Category> = Vec::new();
+        let mut list: Vec<String> = Vec::new();
 
         assert_eq!(list.add_exclusive(""), Some(RequestFailure::EmptyArgument));
-        assert_eq!(list, []);
+        assert_eq!(list.is_empty(), true);
     }
 
     #[test]
     fn discard_adding_incorrect_key() {
-        let mut list: Vec<Category> = Vec::new();
+        let mut list: Vec<String> = Vec::new();
 
         assert_eq!(
             list.add_exclusive("  "),
             Some(RequestFailure::IncorrectArgument)
         );
-        assert_eq!(list, []);
+        assert_eq!(list.is_empty(), true);
     }
 
     #[test]
     fn discard_removing_unknown_key() {
         let items = (0..3)
-            .map(|id| Category(format!("Key {}", id), ItemSelector::Selected))
-            .collect::<Vec<Category>>();
+            .map(|id| format!("Key {}", id))
+            .collect::<Vec<String>>();
 
-        let mut list: Vec<Category> = items.clone();
+        let mut list = items.clone();
 
         assert_eq!(
             list.remove_exclusive("Key 4"),
