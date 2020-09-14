@@ -1,9 +1,9 @@
-use rust_money::order::{Order, TransactionState};
-use rust_money::Account;
-
 #[cfg(test)]
 mod account {
-    use super::*;
+    use rust_money::filter::category::Category;
+    use rust_money::filter::{Filter, ItemSelector, VisibilityFilter};
+    use rust_money::order::{Order, TransactionState};
+    use rust_money::Account;
 
     #[test]
     fn add_hide_delete_orders() {
@@ -59,6 +59,7 @@ mod account {
 
     #[test]
     fn check_filtered_orders() {
+        let mut filter = Filter::default();
         let mut account = Account::create();
         let mut expected_orders: Vec<(usize, Order)> = vec![
             (0, Order::default()),
@@ -81,6 +82,19 @@ mod account {
         tags.iter().for_each(|tag| {
             account.add_tag(tag.as_str());
         });
+        filter.get_resource_option_mut().set(
+            resources
+                .iter()
+                .map(|resource| Category(resource.clone(), ItemSelector::Selected))
+                .collect::<Vec<Category>>()
+                .into_iter(),
+        );
+        filter.get_tag_option_mut().set(
+            tags.iter()
+                .map(|tag| Category(tag.clone(), ItemSelector::Selected))
+                .collect::<Vec<Category>>()
+                .into_iter(),
+        );
 
         account.add_order();
         account.get_order_mut(0).unwrap().description = "Car gas".into();
@@ -157,7 +171,7 @@ mod account {
         expected_orders[3].1.add_tag(tags[4].as_str(), &tags);
         expected_orders[3].1.add_tag(tags[3].as_str(), &tags);
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[0].0, &expected_orders[0].1),
                 (expected_orders[1].0, &expected_orders[1].1),
@@ -165,25 +179,22 @@ mod account {
             ]
         );
 
-        account.toggle_resource_selection("Bank");
-
+        filter.get_resource_option_mut().toggle("Bank");
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [(expected_orders[0].0, &expected_orders[0].1),]
         );
-
-        account.toggle_resource_selection("Cash");
-
+        filter.get_resource_option_mut().toggle("Cash");
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [(expected_orders[3].0, &expected_orders[3].1),]
         );
 
-        account.toggle_resource_selection("Bank");
-        account.toggle_tag_selection("Transport");
+        filter.get_resource_option_mut().toggle("Bank");
+        filter.get_tag_option_mut().toggle("Transport");
 
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[1].0, &expected_orders[1].1),
                 (expected_orders[2].0, &expected_orders[2].1),
@@ -194,14 +205,14 @@ mod account {
             .get_order_mut(3)
             .unwrap()
             .set_resource(resources[0].as_str(), &resources);
-        account.toggle_resource_selection("Cash");
+        filter.get_resource_option_mut().toggle("Cash");
 
         // Update expected values
         expected_orders[3]
             .1
             .set_resource(resources[0].as_str(), &resources);
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[0].0, &expected_orders[0].1),
                 (expected_orders[1].0, &expected_orders[1].1),
@@ -210,12 +221,12 @@ mod account {
             ]
         );
 
-        account.toggle_tag_selection("Food");
-        account.toggle_tag_selection("Service");
-        account.toggle_tag_selection("Supermarket");
+        filter.get_tag_option_mut().toggle("Food");
+        filter.get_tag_option_mut().toggle("Service");
+        filter.get_tag_option_mut().toggle("Supermarket");
 
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[0].0, &expected_orders[0].1),
                 (expected_orders[2].0, &expected_orders[2].1),
@@ -223,14 +234,14 @@ mod account {
             ]
         );
 
-        account.toggle_tag_selection("Mom & Dad");
+        filter.get_tag_option_mut().toggle("Mom & Dad");
 
-        assert_eq!(account.filtered_orders().len(), 0);
+        assert_eq!(account.filtered_orders(&filter).len(), 0);
 
-        account.clear_filters();
+        filter = Filter::default();
 
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[0].0, &expected_orders[0].1),
                 (expected_orders[1].0, &expected_orders[1].1),
@@ -239,11 +250,12 @@ mod account {
             ]
         );
 
+        filter.visibility = VisibilityFilter::VisibleOnly;
         account.get_order_mut(1).unwrap().visible = false;
         account.get_order_mut(2).unwrap().visible = false;
 
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[0].0, &expected_orders[0].1),
                 (expected_orders[3].0, &expected_orders[3].1),
@@ -270,7 +282,7 @@ mod account {
         expected_orders[1].1.set_state(TransactionState::InProgress);
         expected_orders[2].1.set_state(TransactionState::Done);
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[0].0, &expected_orders[0].1),
                 (expected_orders[1].0, &expected_orders[1].1),
@@ -279,24 +291,24 @@ mod account {
             ]
         );
 
-        account.toggle_order_state_selection(TransactionState::Done);
+        filter.toggle_state(TransactionState::Done);
 
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[1].0, &expected_orders[1].1),
                 (expected_orders[3].0, &expected_orders[3].1),
             ]
         );
 
-        account.toggle_order_state_selection(TransactionState::InProgress);
+        filter.toggle_state(TransactionState::InProgress);
 
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [(expected_orders[3].0, &expected_orders[3].1),]
         );
 
-        account.clear_filters();
+        filter = Filter::default();
         account.get_order_mut(0).unwrap().visible = false;
         account.get_order_mut(3).unwrap().visible = false;
         account.delete_hidden_orders();
@@ -305,7 +317,7 @@ mod account {
         expected_orders[1].0 = 0;
         expected_orders[2].0 = 1;
         assert_eq!(
-            account.filtered_orders(),
+            account.filtered_orders(&filter),
             [
                 (expected_orders[1].0, &expected_orders[1].1),
                 (expected_orders[2].0, &expected_orders[2].1),

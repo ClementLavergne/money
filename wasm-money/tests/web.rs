@@ -5,15 +5,19 @@
 use js_sys::Array;
 use wasm_bindgen::prelude::JsValue;
 use wasm_bindgen_test::*;
+use wasm_money::CategoryType::{Resource, Tag};
 use wasm_money::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
-pub fn check_tags() {
+pub fn check_sorted_tags() {
     let mut account = Account::create();
     let tags = ["Food", "Transport", "Service", "Video Games"];
-    let expected = tags
+    let mut sorted_tags = tags.to_vec();
+    sorted_tags.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+
+    let expected = sorted_tags
         .iter()
         .map(|item| JsValue::from(item.to_string()))
         .collect::<Array>();
@@ -22,24 +26,36 @@ pub fn check_tags() {
         account.add_tag(tag);
     });
 
-    assert_eq!(get_account_tags(&account).to_vec(), expected.to_vec());
+    assert_eq!(
+        get_account_categories(&account, Tag).to_vec(),
+        expected.to_vec()
+    );
 
     account.remove_tag(tags[1]);
     account.remove_tag(tags[3]);
 
-    let expected = [tags[0], tags[2]]
+    let mut sorted_tags = [tags[0], tags[2]].to_vec();
+    sorted_tags.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+
+    let expected = sorted_tags
         .iter()
         .map(|item| JsValue::from(item.to_string()))
         .collect::<Array>();
 
-    assert_eq!(get_account_tags(&account).to_vec(), expected.to_vec());
+    assert_eq!(
+        get_account_categories(&account, Tag).to_vec(),
+        expected.to_vec()
+    );
 }
 
 #[wasm_bindgen_test]
-pub fn check_resources() {
+pub fn check_sorted_resources() {
     let mut account = Account::create();
-    let resources = ["Bank", "Cash"];
-    let expected = resources
+    let resources = ["Cash", "Bank"];
+    let mut sorted_resources = resources.to_vec();
+    sorted_resources.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+
+    let expected = sorted_resources
         .iter()
         .map(|item| JsValue::from(item.to_string()))
         .collect::<Array>();
@@ -48,16 +64,25 @@ pub fn check_resources() {
         account.add_resource(resource);
     });
 
-    assert_eq!(get_account_resources(&account).to_vec(), expected.to_vec());
+    assert_eq!(
+        get_account_categories(&account, Resource).to_vec(),
+        expected.to_vec()
+    );
 
     account.remove_resource("Bank");
 
-    let expected = [resources[1]]
+    let mut sorted_resources = [resources[0]].to_vec();
+    sorted_resources.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+
+    let expected = sorted_resources
         .iter()
         .map(|item| JsValue::from(item.to_string()))
         .collect::<Array>();
 
-    assert_eq!(get_account_resources(&account).to_vec(), expected.to_vec());
+    assert_eq!(
+        get_account_categories(&account, Resource).to_vec(),
+        expected.to_vec()
+    );
 }
 
 #[wasm_bindgen_test]

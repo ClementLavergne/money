@@ -23,3 +23,7 @@ body {
 #orders tr td  , #orders tr th {
     padding:1em;
 }
+
+.container {
+    display: flex;
+}

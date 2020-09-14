@@ -3,10 +3,12 @@
 //! `money` is a collection of utilities to make tracking money expenses.
 
 pub mod ext;
+pub mod filter;
 pub mod order;
 
-use ext::{Category, ExclusiveItemExt, ItemSelector, RequestFailure};
-use order::{Order, TransactionState};
+use ext::{ExclusiveItemExt, RequestFailure};
+use filter::Filter;
+use order::Order;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::fs::File;
@@ -19,9 +21,8 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(feature = "wasmbind", wasm_bindgen)]
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Account {
-    tags: Vec<Category>,
-    resources: Vec<Category>,
-    states: [ItemSelector; 3],
+    tags: Vec<String>,
+    resources: Vec<String>,
     orders: Vec<Order>,
 }
 
@@ -37,11 +38,6 @@ impl Account {
         Account {
             tags: Vec::new(),
             resources: Vec::new(),
-            states: [
-                ItemSelector::Selected,
-                ItemSelector::Selected,
-                ItemSelector::Selected,
-            ],
             orders: Vec::new(),
         }
     }
@@ -64,11 +60,6 @@ impl Account {
         }
     }
 
-    // Filters in or out the selected tag.
-    pub fn toggle_tag_selection(&mut self, tag: &str) -> Option<RequestFailure> {
-        self.tags.toggle_selection(tag)
-    }
-
     /// Adds a valid resource if it doesn't exist yet.
     pub fn add_resource(&mut self, resource: &str) -> Option<RequestFailure> {
         self.resources.add_exclusive(resource)
@@ -79,24 +70,14 @@ impl Account {
         if self.resources.remove_exclusive(resource).is_none() {
             // Remove related resource from orders
             self.orders.iter_mut().for_each(|x| {
-                if x.resource() == &Some(resource.to_string()) {
-                    x.clear_resource();
+                if x.resource == Some(resource.to_string()) {
+                    x.resource = None;
                 }
             });
             None
         } else {
             Some(RequestFailure::UnknownItem)
         }
-    }
-
-    // Filters in or out the selected resource.
-    pub fn toggle_resource_selection(&mut self, resource: &str) -> Option<RequestFailure> {
-        self.resources.toggle_selection(resource)
-    }
-
-    // Filters in or out the selected transaction state.
-    pub fn toggle_order_state_selection(&mut self, state: TransactionState) {
-        self.states[state as usize].toggle();
     }
 
     /// Creates a default order.
@@ -109,32 +90,25 @@ impl Account {
         self.orders.retain(|x| x.visible);
     }
 
-    /// Resets all filter selection.
-    pub fn clear_filters(&mut self) {
-        self.tags
-            .iter_mut()
-            .chain(self.resources.iter_mut())
-            .for_each(|item| item.1 = ItemSelector::Selected);
-
-        self.states
-            .iter_mut()
-            .for_each(|state| *state = ItemSelector::Selected);
-    }
-
-    /// Sums each order amount.
-    pub fn sum_orders(&self) -> f32 {
-        self.orders.iter().map(|order| order.amount).sum()
+    /// Deletes one order permanently.
+    pub fn delete_order(&mut self, index: usize) -> bool {
+        if self.orders.get(index).is_some() {
+            self.orders.remove(index);
+            true
+        } else {
+            false
+        }
     }
 }
 
 impl Account {
     /// Returns available tags.
-    pub fn tags(&self) -> &Vec<Category> {
+    pub fn tags(&self) -> &Vec<String> {
         &self.tags
     }
 
     /// Returns available resources.
-    pub fn resources(&self) -> &Vec<Category> {
+    pub fn resources(&self) -> &Vec<String> {
         &self.resources
     }
 
@@ -149,56 +123,11 @@ impl Account {
     }
 
     /// Returns selected orders with their associated id.
-    pub fn filtered_orders(&self) -> Vec<(usize, &Order)> {
-        let filter_selected = |vector: &Vec<Category>| {
-            vector
-                .iter()
-                .filter_map(|item| {
-                    if let ItemSelector::Selected = item.1 {
-                        Some(item.0.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<String>>()
-        };
-
-        let selected_resources = filter_selected(&self.resources);
-        let selected_tags = filter_selected(&self.tags);
-
+    pub fn filtered_orders(&self, filter: &Filter) -> Vec<(usize, &Order)> {
         self.orders
             .iter()
             .enumerate()
-            .filter(|(_, order)| {
-                // Discard removed orders
-                if order.visible {
-                    // Make sure that at least one tag is among allowed ones
-                    let tag_match = if selected_tags.is_empty() {
-                        order.tags().is_empty()
-                    } else {
-                        order.tags().iter().any(|tag| selected_tags.contains(tag))
-                    };
-
-                    // Make sure the current state is among allowed ones
-                    let state_match =
-                        if let ItemSelector::Selected = self.states[order.state() as usize] {
-                            true
-                        } else {
-                            false
-                        };
-
-                    // Make sure the resource is part of allowed ones
-                    let resource_match = if let Some(resource) = order.resource() {
-                        selected_resources.contains(&resource)
-                    } else {
-                        selected_resources.is_empty()
-                    };
-
-                    tag_match && resource_match && state_match
-                } else {
-                    false
-                }
-            })
+            .filter(|(_, order)| filter.is_order_allowed(order))
             .collect()
     }
 
@@ -246,85 +175,76 @@ mod tests {
 
     mod account {
         use super::*;
+        use filter::category::{Category, CategoryFilter};
+        use filter::date::NaiveDateFilter;
+        use filter::{ItemSelector, VisibilityFilter};
+        use order::TransactionState;
 
         #[test]
         fn remove_resource_used_by_orders() {
-            let mut expected_orders = [
-                Order::default(),
-                Order::default(),
-                Order::default(),
-                Order::default(),
-            ];
             let resources = [
                 String::from("Bank"),
                 String::from("Cash"),
                 String::from("Gift Check"),
             ];
-            let mut filters: Vec<Category> = Vec::new();
-            resources.iter().for_each(|resource| {
-                filters.push(Category {
-                    0: resource.clone(),
-                    1: ItemSelector::Selected,
-                });
-            });
+            let mut orders = [
+                Order {
+                    resource: Some(resources[0].clone()),
+                    ..Order::default()
+                },
+                Order {
+                    resource: Some(resources[1].clone()),
+                    ..Order::default()
+                },
+                Order {
+                    resource: Some(resources[1].clone()),
+                    ..Order::default()
+                },
+                Order {
+                    resource: Some(resources[2].clone()),
+                    ..Order::default()
+                },
+            ];
             let mut account = Account {
-                resources: filters,
+                resources: resources.to_vec(),
+                orders: orders.to_vec(),
                 ..Account::create()
             };
 
-            account.add_order();
-            account.orders[0].set_resource(resources[0].as_str(), &resources);
-            account.add_order();
-            account.orders[1].set_resource(resources[1].as_str(), &resources);
-            account.add_order();
-            account.orders[2].set_resource(resources[1].as_str(), &resources);
-            account.add_order();
-            account.orders[3].set_resource(resources[2].as_str(), &resources);
-
+            orders[1].resource = None;
+            orders[2].resource = None;
             assert_eq!(account.remove_resource(resources[1].as_str()), None);
-
-            expected_orders[0].set_resource(resources[0].as_str(), &resources);
-            expected_orders[3].set_resource(resources[2].as_str(), &resources);
-            assert_eq!(account.orders(), expected_orders);
+            assert_eq!(account.orders, orders);
         }
 
         #[test]
         fn remove_tag_used_by_orders() {
-            let mut expected_orders = [Order::default(), Order::default()];
             let tags = [
                 String::from("Food"),
                 String::from("Service"),
                 String::from("Video Games"),
                 String::from("Transport"),
             ];
-            let mut filters: Vec<Category> = Vec::new();
-            tags.iter().for_each(|tag| {
-                filters.push(Category {
-                    0: tag.clone(),
-                    1: ItemSelector::Selected,
-                });
-            });
+            let mut orders = [
+                Order {
+                    tags: tags[..2].to_vec(),
+                    ..Order::default()
+                },
+                Order {
+                    tags: tags[1..3].to_vec(),
+                    ..Order::default()
+                },
+            ];
             let mut account = Account {
-                tags: filters,
+                tags: tags.to_vec(),
+                orders: orders.to_vec(),
                 ..Account::create()
             };
 
-            account.add_order();
-            account.orders[0].add_tag(tags[0].as_str(), &tags);
-            account.orders[0].add_tag(tags[1].as_str(), &tags);
-            account.add_order();
-            account.orders[1].add_tag(tags[2].as_str(), &tags);
-            account.orders[1].add_tag(tags[1].as_str(), &tags);
-
-            expected_orders[0].add_tag(tags[0].as_str(), &tags);
-            expected_orders[0].add_tag(tags[1].as_str(), &tags);
-            expected_orders[1].add_tag(tags[2].as_str(), &tags);
-            expected_orders[1].add_tag(tags[1].as_str(), &tags);
+            orders[0].tags.remove(1);
+            orders[1].tags.remove(0);
             assert_eq!(account.remove_tag(tags[1].as_str()), None);
-
-            expected_orders[0].remove_tag(tags[1].as_str());
-            expected_orders[1].remove_tag(tags[1].as_str());
-            assert_eq!(account.orders(), expected_orders);
+            assert_eq!(account.orders, orders);
         }
 
         #[test]
@@ -335,111 +255,124 @@ mod tests {
                 ..Account::create()
             };
 
-            assert_eq!(account.orders(), expected_orders);
+            assert_eq!(account.orders, expected_orders);
         }
 
         #[test]
-        fn filter_orders_by_visibility() {
-            let mut expected_orders = [Order::default(), Order::default(), Order::default()];
-            expected_orders[0].visible = false;
-
-            let account = Account {
-                orders: expected_orders.to_vec(),
-                ..Account::create()
-            };
-
-            assert_eq!(
-                account.filtered_orders(),
-                expected_orders
-                    .to_vec()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, value)| value.visible)
-                    .collect::<Vec<(usize, &Order)>>()
-            );
-        }
-
-        #[test]
-        fn filter_orders_by_resources() {
-            let resources = vec!["Bank".to_string(), "Cash".to_string()];
-            let mut expected_orders = [Order::default(), Order::default(), Order::default()];
-            expected_orders[0].set_resource(resources[0].as_str(), &resources);
-            expected_orders[1].set_resource(resources[1].as_str(), &resources);
-            expected_orders[2].set_resource(resources[0].as_str(), &resources);
-
-            let mut filters: Vec<Category> = Vec::new();
-            resources.iter().for_each(|resource| {
-                filters.push(Category {
-                    0: resource.clone(),
-                    1: if resource == &resources[0] {
-                        ItemSelector::Selected
-                    } else {
-                        ItemSelector::Discarded
+        fn filter_orders() {
+            let resources = [
+                Category("Bank".to_string(), ItemSelector::Discarded),
+                Category("Cash".to_string(), ItemSelector::Selected),
+            ];
+            let tags = [
+                Category("Home".to_string(), ItemSelector::Selected),
+                Category("Sport".to_string(), ItemSelector::Discarded),
+                Category("Gift".to_string(), ItemSelector::Selected),
+                Category("Insurance".to_string(), ItemSelector::Selected),
+            ];
+            let orders = [
+                (
+                    0,
+                    &Order {
+                        date: Some(NaiveDate::from_ymd(2020, 4, 15)),
+                        resource: None,
+                        tags: tags.iter().map(|x| x.0.clone()).collect::<Vec<String>>(),
+                        state: TransactionState::Pending,
+                        visible: true,
+                        ..Order::default()
                     },
-                });
-            });
-
-            let account = Account {
-                resources: filters,
-                orders: expected_orders.to_vec(),
-                ..Account::create()
-            };
-
-            assert_eq!(
-                account.filtered_orders(),
-                expected_orders
-                    .to_vec()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, value)| value.resource() == &Some(resources[0].clone()))
-                    .collect::<Vec<(usize, &Order)>>()
-            );
-        }
-
-        #[test]
-        fn filter_orders_by_tags() {
-            let tags = vec!["Car".to_string(), "Sport".to_string(), "Games".to_string()];
-            let mut expected_orders = [Order::default(), Order::default(), Order::default()];
-            expected_orders[0].add_tag(tags[0].as_str(), &tags);
-            expected_orders[0].add_tag(tags[1].as_str(), &tags);
-            expected_orders[1].add_tag(tags[1].as_str(), &tags);
-            expected_orders[2].add_tag(tags[2].as_str(), &tags);
-            expected_orders[2].add_tag(tags[1].as_str(), &tags);
-            expected_orders[2].add_tag(tags[0].as_str(), &tags);
-
-            let mut filters: Vec<Category> = Vec::new();
-            tags.iter().for_each(|tag| {
-                filters.push(Category {
-                    0: tag.clone(),
-                    1: if tag == &tags[0] {
-                        ItemSelector::Selected
-                    } else {
-                        ItemSelector::Discarded
+                ),
+                (
+                    1,
+                    &Order {
+                        date: None,
+                        resource: Some(resources[0].0.clone()),
+                        tags: tags[..2]
+                            .iter()
+                            .map(|x| x.0.clone())
+                            .collect::<Vec<String>>(),
+                        state: TransactionState::InProgress,
+                        visible: true,
+                        ..Order::default()
                     },
-                });
-            });
-
+                ),
+                (
+                    2,
+                    &Order {
+                        date: Some(NaiveDate::from_ymd(2019, 3, 3)),
+                        resource: Some(resources[1].0.clone()),
+                        tags: tags[1..]
+                            .iter()
+                            .map(|x| x.0.clone())
+                            .collect::<Vec<String>>(),
+                        state: TransactionState::Done,
+                        visible: false,
+                        ..Order::default()
+                    },
+                ),
+                (
+                    3,
+                    &Order {
+                        date: Some(NaiveDate::from_ymd(2020, 5, 20)),
+                        resource: Some(resources[0].0.clone()),
+                        tags: vec![tags[3].0.clone()],
+                        state: TransactionState::Done,
+                        visible: true,
+                        ..Order::default()
+                    },
+                ),
+                (
+                    4,
+                    &Order {
+                        date: Some(NaiveDate::from_ymd(2021, 5, 30)),
+                        resource: Some(resources[1].0.clone()),
+                        tags: Vec::new(),
+                        state: TransactionState::Pending,
+                        visible: true,
+                        ..Order::default()
+                    },
+                ),
+            ];
             let account = Account {
-                tags: filters,
-                orders: expected_orders.to_vec(),
+                resources: resources
+                    .iter()
+                    .map(|x| x.0.clone())
+                    .collect::<Vec<String>>(),
+                orders: orders.iter().map(|x| x.1.clone()).collect::<Vec<Order>>(),
                 ..Account::create()
+            };
+            let filter_1 = Filter {
+                visibility: VisibilityFilter::VisibleOnly,
+                date_option: NaiveDateFilter::Between(
+                    NaiveDate::from_ymd(2020, 3, 14),
+                    NaiveDate::from_ymd(2020, 5, 24),
+                ),
+                ..Filter::default()
+            };
+            let filter_2 = Filter {
+                visibility: VisibilityFilter::VisibilityIgnored,
+                tag_option: CategoryFilter::Enabled(tags[..2].to_vec()),
+                resource_option: CategoryFilter::Enabled(resources.to_vec()),
+                state_option: [
+                    ItemSelector::Selected,
+                    ItemSelector::Discarded,
+                    ItemSelector::Selected,
+                ],
+                ..Filter::default()
             };
 
             assert_eq!(
-                account.filtered_orders(),
-                expected_orders
-                    .to_vec()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, value)| value.tags().contains(&tags[0])
-                        || value.tags().contains(&tags[2]))
-                    .collect::<Vec<(usize, &Order)>>()
+                account.filtered_orders(&filter_1),
+                vec![orders[0], orders[3]]
+            );
+            assert_eq!(
+                account.filtered_orders(&filter_2),
+                vec![orders[2], orders[4]]
             );
         }
 
         #[test]
         fn save_load_data() {
-            let mut saved_account = Account::create();
             let resources = [
                 "Bank I".to_string(),
                 "Cash".to_string(),
@@ -457,46 +390,57 @@ mod tests {
                 "House".to_string(),
                 "Mum & Dad".to_string(),
             ];
-
-            resources.iter().for_each(|resource| {
-                saved_account.add_resource(resource);
-            });
-            tags.iter().for_each(|tag| {
-                saved_account.add_tag(tag);
-            });
-
-            saved_account.add_order();
-            saved_account.orders[0].description = "Gazoline".into();
-            saved_account.orders[0].set_resource(resources[0].as_str(), &resources);
-            saved_account.orders[0].add_tag(tags[3].as_str(), &tags);
-            saved_account.orders[0].add_tag(tags[4].as_str(), &tags);
-            saved_account.orders[0].amount = 62.5;
-            saved_account.orders[0].set_state(TransactionState::InProgress);
-
-            saved_account.add_order();
-            saved_account.orders[1].description = "GamePass Ultimate".into();
-            saved_account.orders[1].set_resource(resources[1].as_str(), &resources);
-            saved_account.orders[1].add_tag(tags[1].as_str(), &tags);
-            saved_account.orders[1].add_tag(tags[2].as_str(), &tags);
-            saved_account.orders[1].amount = 14.99;
-            saved_account.orders[1].set_state(TransactionState::Done);
-
-            saved_account.add_order();
-            saved_account.orders[2].description = "Loan".into();
-            saved_account.orders[2].set_resource(resources[1].as_str(), &resources);
-            saved_account.orders[2].add_tag(tags[5].as_str(), &tags);
-            saved_account.orders[2].add_tag(tags[6].as_str(), &tags);
-            saved_account.orders[2].amount = -600.00;
-            saved_account.orders[2].set_state(TransactionState::Pending);
-            saved_account.orders[2].date = Some(NaiveDate::from_ymd(2020, 10, 2));
-
-            saved_account.add_order();
-            saved_account.orders[3].description = "My anniversary".into();
-            saved_account.orders[3].set_resource(resources[4].as_str(), &resources);
-            saved_account.orders[3].add_tag(tags[7].as_str(), &tags);
-            saved_account.orders[3].amount = 50.00;
-            saved_account.orders[3].set_state(TransactionState::Pending);
-            saved_account.orders[3].date = Some(NaiveDate::from_ymd(2020, 10, 11));
+            let saved_account = Account {
+                resources: resources.to_vec(),
+                tags: tags.to_vec(),
+                orders: vec![
+                    Order {
+                        description: "Gazoline".into(),
+                        date: None,
+                        resource: Some(resources[0].clone()),
+                        tags: tags[3..5].to_vec(),
+                        amount: -62.5,
+                        state: TransactionState::InProgress,
+                        visible: true,
+                    },
+                    Order {
+                        description: "GamePass Ultimate".into(),
+                        date: None,
+                        resource: Some(resources[1].clone()),
+                        tags: tags[1..3].to_vec(),
+                        amount: -14.99,
+                        state: TransactionState::Done,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Loan".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 10, 2)),
+                        resource: Some(resources[1].clone()),
+                        tags: tags[5..7].to_vec(),
+                        amount: -600.0,
+                        state: TransactionState::Pending,
+                        visible: true,
+                    },
+                    Order {
+                        description: "My Anniversary 🎂".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 10, 11)),
+                        resource: Some(resources[1].clone()),
+                        tags: vec![tags[7].clone()],
+                        amount: 50.0,
+                        state: TransactionState::Pending,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Error".into(),
+                        date: None,
+                        resource: Some(resources[1].clone()),
+                        tags: Vec::new(),
+                        amount: -5.35,
+                        state: TransactionState::Done,
+                        visible: false,
+                    },
+                ],
+            };
 
             // Serialize over a file
             if let Err(error) = saved_account.save_file(Path::new("data.yml")) {

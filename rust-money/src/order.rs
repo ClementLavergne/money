@@ -1,5 +1,6 @@
 //! # Management of a *transaction*.
 
+use super::ext::ExclusiveItemExt;
 use chrono::{Local, NaiveDate};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "wasmbind")]
@@ -11,9 +12,9 @@ pub struct Order {
     pub date: Option<NaiveDate>,
     pub description: String,
     pub amount: f32,
-    resource: Option<String>,
-    tags: Vec<String>,
-    state: TransactionState,
+    pub(crate) resource: Option<String>,
+    pub(crate) tags: Vec<String>,
+    pub(crate) state: TransactionState,
     pub visible: bool,
 }
 
@@ -54,27 +55,10 @@ impl Order {
         }
     }
 
-    /// Resets the resource.
-    pub fn clear_resource(&mut self) {
-        self.resource = None;
-    }
-
-    /// Exports *resource* reference.
-    pub fn resource(&self) -> &Option<String> {
-        &self.resource
-    }
-
     /// Selects a tag among available ones.
     pub fn add_tag(&mut self, tag: &str, list: &[String]) -> bool {
         if list.contains(&tag.into()) {
-            let tag = tag.to_string();
-
-            if !self.tags.contains(&tag) {
-                self.tags.push(tag);
-                true
-            } else {
-                false
-            }
+            self.tags.add_exclusive(tag).is_none()
         } else {
             false
         }
@@ -82,24 +66,12 @@ impl Order {
 
     /// Removes a tag among added ones.
     pub fn remove_tag(&mut self, tag: &str) -> bool {
-        let tag = tag.to_string();
-
-        if self.tags.contains(&tag) {
-            self.tags.retain(|x| x != &tag);
-            true
-        } else {
-            false
-        }
+        self.tags.remove_exclusive(tag).is_none()
     }
 
     /// Removes all tags.
     pub fn clear_tags(&mut self) {
         self.tags.clear();
-    }
-
-    /// Exports *tags* reference.
-    pub fn tags(&self) -> &[String] {
-        &self.tags
     }
 
     /// Sets the current state of the order.
