@@ -117,8 +117,12 @@ pub fn set_account_order_description(
 #[wasm_bindgen]
 pub fn set_account_order_amount(account: &mut Account, index: usize, amount: f32) -> bool {
     if let Some(order) = account.get_order_mut(index) {
-        order.amount = amount;
-        true
+        if !amount.is_nan() {
+            order.amount = amount;
+            true
+        } else {
+            false
+        }
     } else {
         false
     }
