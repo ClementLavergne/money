@@ -1,7 +1,6 @@
 import {
     Account,
     add_filter_category,
-    clear_filter_categories,
     CategoryType,
     delete_account_order,
     Filter,
@@ -14,59 +13,44 @@ import {
     set_account_order_state,
     get_account_categories,
     get_account_filtered_orders,
-    get_filter_category_state,
     load_account_data,
     remove_filter_category,
     serialize_account_as_yaml,
-    set_filter_categories,
     sum_filtered_orders,
-    toggle_filter_category,
     toggle_account_order_visibility,
-    ItemSelector,
-    VisibilityFilter,
 } from "money"
 
 import {
     clearTableRows,
     getEnumStrings,
-    enumIndexToString,
     enumStringToIndex,
-    removeChildNodeById,
-    removeChildNodesByTagName,
     dateString,
-    firstDayCurrentMonthString,
-    lastDayCurrentMonthString,
 } from "./modules/utils.js"
+
+import {
+    initCategoryFilter,
+    resetCategoryFilter,
+    initFilter,
+    resourcesHideFilter,
+    tagsHideFilter,
+} from "./modules/order-filter.js"
 
 // Singleton
 const account = new Account()
 const filter = new Filter()
 // Tags management
-const tagsCluster = document.getElementById("tags-manager")
 const inputTag = document.getElementById("input-tag")
 const tagsList = document.getElementById("tag-list")
 const addTag = document.getElementById("add-tag")
 const removeTag = document.getElementById("remove-tag")
-const tagsFilterButton = document.getElementById("tags-filter-switch")
-var tagsHideFilter = true
 // Resources management
-const resourcesCluster = document.getElementById("resources-manager")
 const inputResource = document.getElementById("input-resource")
 const resourcesList = document.getElementById("resource-list")
 const addResource = document.getElementById("add-resource")
 const removeResource = document.getElementById("remove-resource")
-const resourcesFilterButton = document.getElementById("resources-filter-switch")
-var resourcesHideFilter = true
 // Orders
 const addOrder = document.getElementById("add-order")
 const ordersTable = document.getElementById("orders")
-const statesCluster = document.getElementById("states-manager")
-const dateCluster = document.getElementById("date-manager")
-const dateFilterButton = document.getElementById("date-filter-switch")
-var dateHideFilter = true
-const allRadioButton = document.getElementById("all-radio")
-const activeRadioButton = document.getElementById("active-radio")
-const removedRadioButton = document.getElementById("removed-radio")
 // File management
 const loadData = document.getElementById("load-data")
 const downloadData = document.getElementById("download-data")
@@ -74,136 +58,9 @@ const downloadData = document.getElementById("download-data")
 const sum = document.getElementById("sum-canvas")
 // Enumerations
 const transactionStateEnum = getEnumStrings(TransactionState)
-const itemSelectorEnum = getEnumStrings(ItemSelector)
-const visibilityEnum = getEnumStrings(VisibilityFilter)
 const categoryTypeEnum = getEnumStrings(CategoryType)
 const resourceCategoryType = enumStringToIndex(categoryTypeEnum, "Resource")
 const tagCategoryType = enumStringToIndex(categoryTypeEnum, "Tag")
-
-const addCategorySelectButton = (node, list) => {
-    if (list.length != 0) {
-        var button = document.createElement("input")
-        button.type = "button"
-        button.value = "deselect all"
-        button.id = "select-button"
-
-        button.addEventListener('click', () => {
-            var categoryType = undefined
-            switch (node) {
-                case resourcesCluster:
-                    categoryType = resourceCategoryType
-                    break
-                case tagsCluster:
-                    categoryType = tagCategoryType
-                    break
-            }
-
-            if (categoryType != undefined) {
-                if (button.value == "deselect all") {
-                    button.value = "select all"
-                    const selectedIndex = enumStringToIndex(itemSelectorEnum, "Selected")
-
-                    list.forEach(function(item) {
-                        if (get_filter_category_state(filter, categoryType, item) == selectedIndex) {
-                            toggle_filter_category(filter, categoryType, item)
-                        }
-                    })
-                } else {
-                    button.value = "deselect all"
-                    const discardedIndex = enumStringToIndex(itemSelectorEnum, "Discarded")
-
-                    list.forEach(function(item) {
-                        if (get_filter_category_state(filter, categoryType, item) == discardedIndex) {
-                            toggle_filter_category(filter, categoryType, item)
-                        }
-                    })
-                }
-                requestAnimationFrame(render)
-            } else {
-                console.error("Invalid node: ", node)
-            }
-        })
-
-        node.appendChild(button)
-    }
-}
-
-const addCategoryCheckboxes  = (node, list) => {
-    // Add one for each item
-    list.forEach(function(item) {
-        var div = document.createElement("div")
-        var label = document.createElement("label")
-        var checkbox = document.createElement("input")
-        label.appendChild(document.createTextNode(item))
-        checkbox.type = "checkbox"
-
-        var categoryType = undefined
-        switch (node) {
-            case resourcesCluster:
-                categoryType = resourceCategoryType
-                break
-            case tagsCluster:
-                categoryType = tagCategoryType
-                break
-        }
-
-        if (categoryType != undefined) {
-            // Initialize the checkbox with current value (should always be 'Selected')
-            const string = enumIndexToString(itemSelectorEnum, get_filter_category_state(filter, categoryType, item))
-            if (string == "Selected") {
-                checkbox.checked = true
-            } else if (string == "Discarded") {
-                checkbox.checked = false
-            } else {
-                console.error("Unknown selector", string)
-            }
-
-            checkbox.addEventListener('change', function() {
-                if (toggle_filter_category(filter, categoryType, item) != undefined) {
-                    requestAnimationFrame(render)
-                }
-                else {
-                    console.error("Unknown selector", item)
-                }
-            }, false)
-
-            div.appendChild(checkbox)
-            div.appendChild(label)
-            node.appendChild(div)
-        }
-    })
-}
-
-const setStatesCheckboxes = () => {
-    transactionStateEnum.forEach(function(item) {
-        var div = document.createElement("div")
-        var label = document.createElement("label")
-        var checkbox = document.createElement("input")
-        label.appendChild(document.createTextNode(item[0]))
-        checkbox.type = "checkbox"
-
-        const index = enumStringToIndex(transactionStateEnum, item[0])
-
-        // Initialize the checkbox with current value (should always be 'Selected')
-        const string = enumIndexToString(itemSelectorEnum, filter.get_state(index))
-        if (string == "Selected") {
-            checkbox.checked = true
-        } else if (string == "Discarded") {
-            checkbox.checked = false
-        } else {
-            console.error("Unknown selector", string)
-        }
-
-        checkbox.addEventListener('change', function() {
-            filter.toggle_state(index)
-            requestAnimationFrame(render)
-        }, false)
-
-        div.appendChild(checkbox)
-        div.appendChild(label)
-        statesCluster.appendChild(div)
-    })
-}
 
 const refreshCategoryCombobox  = (node, list) => {
     // Remove all options
@@ -219,20 +76,17 @@ const refreshCategoryCombobox  = (node, list) => {
 }
 
 const refreshCategoryList = (type) => {
-    var cluster
     var combobox
     var filter_state
     var categoryType = undefined
     var error = false
     switch (type) {
         case "Tag":
-            cluster = tagsCluster
             combobox = tagsList
             categoryType = tagCategoryType
             filter_state = tagsHideFilter
             break;
         case "Resource":
-            cluster = resourcesCluster
             combobox = resourcesList
             categoryType = resourceCategoryType
             filter_state = resourcesHideFilter
@@ -249,59 +103,13 @@ const refreshCategoryList = (type) => {
             refreshCategoryCombobox(combobox, list)
             // Checkboxes
             if (!filter_state) {
-                removeChildNodesByTagName(cluster, "DIV")
-                addCategoryCheckboxes(cluster, list)
+                resetCategoryFilter(type)
+                initCategoryFilter(filter, type, list, render)
             }
         } else {
             console.error("Unable to get " + type + " categories")
         }
     }
-}
-
-const addDateRangeInputs = () => {
-    var div_start = document.createElement("div")
-    var div_stop = document.createElement("div")
-    var label_start = document.createElement("label")
-    var label_stop = document.createElement("label")
-    label_start.appendChild(document.createTextNode("Start"))
-    label_stop.appendChild(document.createTextNode("Stop"))
-    var begin = document.createElement("input")
-    begin.type = "text"
-    var end = document.createElement("input")
-    end.type = "text"
-
-    begin.addEventListener('keyup', ({key}) => {
-        if (key === "Enter") {
-            if (!filter.set_date_beginning(begin.value)) {
-                begin.value = ""
-            }
-            requestAnimationFrame(render)
-        }
-    })
-
-    begin.addEventListener('click', () => {
-        begin.value = firstDayCurrentMonthString()
-    })
-
-    end.addEventListener('keyup', ({key}) => {
-        if (key === "Enter") {
-            if (!filter.set_date_end(end.value)) {
-                end.value = ""
-            }
-            requestAnimationFrame(render)
-        }
-    })
-
-    end.addEventListener('click', () => {
-        end.value = lastDayCurrentMonthString()
-    })
-
-    div_start.appendChild(begin)
-    div_start.appendChild(label_start)
-    dateCluster.appendChild(div_start)
-    div_start.appendChild(end)
-    div_start.appendChild(label_stop)
-    dateCluster.appendChild(div_stop)
 }
 
 const addOrderRow = (obj) => {
@@ -498,27 +306,6 @@ removeTag.addEventListener("click", event => {
     }
 })
 
-tagsFilterButton.addEventListener("click", event => {
-    const categoryType = tagCategoryType
-    if (tagsHideFilter) {
-        tagsFilterButton.textContent = "disable filter"
-
-        const tags = get_account_categories(account, categoryType)
-        set_filter_categories(filter, categoryType, tags)
-        addCategorySelectButton(tagsCluster, tags)
-        addCategoryCheckboxes(tagsCluster, tags)
-    } else {
-        tagsFilterButton.textContent = "enable filter"
-        removeChildNodesByTagName(tagsCluster, "DIV")
-        removeChildNodeById(tagsCluster, "select-button")
-        clear_filter_categories(filter, categoryType)
-        requestAnimationFrame(render)
-    }
-
-    // Toggle
-    tagsHideFilter = !tagsHideFilter
-})
-
 addResource.addEventListener("click", event => {
     if (account.add_resource(inputResource.value) == undefined) {
         if (!resourcesHideFilter) {
@@ -541,55 +328,6 @@ removeResource.addEventListener("click", event => {
     }
 })
 
-resourcesFilterButton.addEventListener("click", event => {
-    const categoryType = resourceCategoryType
-    if (resourcesHideFilter) {
-        resourcesFilterButton.textContent = "disable filter"
-
-        const resources = get_account_categories(account, categoryType)
-        set_filter_categories(filter, categoryType, resources)
-        addCategorySelectButton(resourcesCluster, resources)
-        addCategoryCheckboxes(resourcesCluster, resources)
-    } else {
-        resourcesFilterButton.textContent = "enable filter"
-        removeChildNodesByTagName(resourcesCluster, "DIV")
-        removeChildNodeById(resourcesCluster, "select-button")
-        clear_filter_categories(filter, categoryType)
-        requestAnimationFrame(render)
-    }
-
-    // Toggle
-    resourcesHideFilter = !resourcesHideFilter
-})
-
-dateFilterButton.addEventListener("click", event => {
-    if (dateHideFilter) {
-        dateFilterButton.textContent = "disable filter"
-        addDateRangeInputs()
-    } else {
-        dateFilterButton.textContent = "enable filter"
-        removeChildNodesByTagName(dateCluster, "DIV")
-        filter.disable_date_option()
-        requestAnimationFrame(render)
-    }
-
-    // Toggle
-    dateHideFilter = !dateHideFilter
-})
-
-allRadioButton.addEventListener("click", event => {
-    filter.visibility = enumStringToIndex(visibilityEnum, "VisibilityIgnored")
-    requestAnimationFrame(render)
-})
-activeRadioButton.addEventListener("click", event => {
-    filter.visibility = enumStringToIndex(visibilityEnum, "VisibleOnly")
-    requestAnimationFrame(render)
-})
-removedRadioButton.addEventListener("click", event => {
-    filter.visibility = enumStringToIndex(visibilityEnum, "HiddenOnly")
-    requestAnimationFrame(render)
-})
-
 addOrder.addEventListener("click", event => {
     account.add_order()
     requestAnimationFrame(render)
@@ -607,6 +345,8 @@ loadData.addEventListener("change", function() {
 
         if (load_account_data(account, content)) {
             console.log("File '" + file + "' loaded!")
+            refreshCategoryList("Resource")
+            refreshCategoryList("Tag")
             requestAnimationFrame(render)
         }
     }
@@ -637,23 +377,6 @@ downloadData.addEventListener("click", event => {
 
 const render = () => {
     console.log("Render!")
-    // Configuration
-    // To be removed!?
-    refreshCategoryList("Tag")
-    refreshCategoryList("Resource")
-
-    // Order visibility
-    switch (filter.visibility) {
-        case enumStringToIndex(visibilityEnum, "VisibilityIgnored"):
-            allRadioButton.checked = true
-            break;
-        case enumStringToIndex(visibilityEnum, "VisibleOnly"):
-            activeRadioButton.checked = true
-            break;
-        case enumStringToIndex(visibilityEnum, "HiddenOnly"):
-            removedRadioButton.checked = true
-            break;
-    }
 
     // Clear table rows
     clearTableRows(ordersTable)
@@ -671,5 +394,5 @@ const render = () => {
     sum.textContent = sum_filtered_orders(account, filter).toFixed(2) + '€'
 }
 
-setStatesCheckboxes()
+initFilter(account, filter, render)
 requestAnimationFrame(render)
