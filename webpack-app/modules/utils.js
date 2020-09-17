@@ -1,4 +1,5 @@
 export {
+    clearTableRows,
     getEnumStrings,
     enumStringToIndex,
     enumIndexToString,
@@ -92,4 +93,10 @@ const lastDayCurrentMonthString = () => {
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
 
     return dateString(lastDay)
+}
+
+const clearTableRows = (table) => {
+    for (var i=table.rows.length-1; i >=1; i--) {
+        table.deleteRow(i)
+    }
 }

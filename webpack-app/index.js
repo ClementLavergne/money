@@ -27,6 +27,7 @@ import {
 } from "money"
 
 import {
+    clearTableRows,
     getEnumStrings,
     enumIndexToString,
     enumStringToIndex,
@@ -647,9 +648,7 @@ const render = () => {
     }
 
     // Clear table rows
-    for (var i=ordersTable.rows.length-1; i >=1; i--) {
-        ordersTable.deleteRow(i)
-    }
+    clearTableRows(ordersTable)
 
     const orders = get_account_filtered_orders(account, filter)
     if (!orders.length == 0) {
