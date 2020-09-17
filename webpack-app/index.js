@@ -78,7 +78,7 @@ const itemSelectorEnum = getEnumStrings(ItemSelector)
 const visibilityEnum = getEnumStrings(VisibilityFilter)
 const categoryTypeEnum = getEnumStrings(CategoryType)
 const resourceCategoryType = enumStringToIndex(categoryTypeEnum, "Resource")
-const TagCategoryType = enumStringToIndex(categoryTypeEnum, "Tag")
+const tagCategoryType = enumStringToIndex(categoryTypeEnum, "Tag")
 
 const addCategorySelectButton = (node, list) => {
     if (list.length != 0) {
@@ -94,7 +94,7 @@ const addCategorySelectButton = (node, list) => {
                     categoryType = resourceCategoryType
                     break
                 case tagsCluster:
-                    categoryType = TagCategoryType
+                    categoryType = tagCategoryType
                     break
             }
 
@@ -143,7 +143,7 @@ const addCategoryCheckboxes  = (node, list) => {
                 categoryType = resourceCategoryType
                 break
             case tagsCluster:
-                categoryType = TagCategoryType
+                categoryType = tagCategoryType
                 break
         }
 
@@ -223,32 +223,38 @@ const refreshCategoryList = (type) => {
     var combobox
     var filter_state
     var categoryType = undefined
+    var error = false
     switch (type) {
-        case "tags":
+        case "Tag":
             cluster = tagsCluster
             combobox = tagsList
-            categoryType = TagCategoryType
+            categoryType = tagCategoryType
             filter_state = tagsHideFilter
             break;
-        case "resources":
+        case "Resource":
             cluster = resourcesCluster
             combobox = resourcesList
             categoryType = resourceCategoryType
             filter_state = resourcesHideFilter
             break;
+        default:
+            error = true
+            console.error("Unknown category type: ", type)
     }
 
-    const list = get_account_categories(account, categoryType)
-    if (list != undefined) {
-        // Combobox
-        refreshCategoryCombobox(combobox, list)
-        // Checkboxes
-        if (!filter_state) {
-            removeChildNodesByTagName(cluster, "DIV")
-            addCategoryCheckboxes(cluster, list)
+    if (error == false) {
+        const list = get_account_categories(account, categoryType)
+        if (list != undefined) {
+            // Combobox
+            refreshCategoryCombobox(combobox, list)
+            // Checkboxes
+            if (!filter_state) {
+                removeChildNodesByTagName(cluster, "DIV")
+                addCategoryCheckboxes(cluster, list)
+            }
+        } else {
+            console.error("Unable to get " + type + " categories")
         }
-    } else {
-        console.error("Unknown type: ", type)
     }
 }
 
@@ -300,6 +306,8 @@ const addDateRangeInputs = () => {
 
 const addOrderRow = (obj) => {
     var row = ordersTable.insertRow()
+    const resourceList = get_account_categories(account, resourceCategoryType)
+    const tagList = get_account_categories(account, tagCategoryType)
 
     // Date
     var date = document.createElement("input")
@@ -363,7 +371,7 @@ const addOrderRow = (obj) => {
     empty_option.text = "-"
     empty_option.disabled = true
     resource.appendChild(empty_option)
-    get_account_categories(account, resourceCategoryType).forEach(function(item) {
+    resourceList.forEach(function(item) {
         var option = document.createElement("option")
         option.value = item
         option.text = item
@@ -385,7 +393,7 @@ const addOrderRow = (obj) => {
     // Tags
     var tags = document.createElement("select")
     tags.multiple = true
-    get_account_categories(account, TagCategoryType).forEach(function(item) {
+    tagList.forEach(function(item) {
         var option = document.createElement("option")
         option.value = item
         option.text = item
@@ -471,9 +479,9 @@ const addOrderRow = (obj) => {
 addTag.addEventListener("click", event => {
     if (account.add_tag(inputTag.value) == undefined) {
         if (!tagsHideFilter) {
-            add_filter_category(filter, TagCategoryType, inputTag.value)
+            add_filter_category(filter, tagCategoryType, inputTag.value)
         }
-        refreshCategoryList("tags")
+        refreshCategoryList("Tag")
         inputTag.value = ""
         requestAnimationFrame(render)
     }
@@ -482,16 +490,16 @@ addTag.addEventListener("click", event => {
 removeTag.addEventListener("click", event => {
     if (account.remove_tag(inputTag.value) == undefined) {
         if (!tagsHideFilter) {
-            remove_filter_category(filter, TagCategoryType, inputTag.value)
+            remove_filter_category(filter, tagCategoryType, inputTag.value)
         }
-        refreshCategoryList("tags")
+        refreshCategoryList("Tag")
         inputTag.value = ""
         requestAnimationFrame(render)
     }
 })
 
 tagsFilterButton.addEventListener("click", event => {
-    const categoryType = TagCategoryType
+    const categoryType = tagCategoryType
     if (tagsHideFilter) {
         tagsFilterButton.textContent = "disable filter"
 
@@ -516,7 +524,7 @@ addResource.addEventListener("click", event => {
         if (!resourcesHideFilter) {
             add_filter_category(filter, resourceCategoryType, inputResource.value)
         }
-        refreshCategoryList("resources")
+        refreshCategoryList("Resource")
         inputResource.value = ""
         requestAnimationFrame(render)
     }
@@ -527,7 +535,7 @@ removeResource.addEventListener("click", event => {
         if (!resourcesHideFilter) {
             remove_filter_category(filter, resourceCategoryType, inputResource.value)
         }
-        refreshCategoryList("resources")
+        refreshCategoryList("Resource")
         inputResource.value = ""
         requestAnimationFrame(render)
     }
@@ -631,8 +639,8 @@ const render = () => {
     console.log("Render!")
     // Configuration
     // To be removed!?
-    refreshCategoryList("tags")
-    refreshCategoryList("resources")
+    refreshCategoryList("Tag")
+    refreshCategoryList("Resource")
 
     // Order visibility
     switch (filter.visibility) {
