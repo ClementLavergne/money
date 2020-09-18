@@ -20,6 +20,10 @@ import {
     lastDayCurrentMonthString,
 } from "./utils.js"
 
+import {
+    refreshCategoryTable,
+} from "./category-table.js"
+
 export {
     initFilter,
     initCategoryFilter,
@@ -122,7 +126,7 @@ const initStateFilter = (filter, render_func) => {
     })
 }
 
-const initDateRangeFilter = (filter, render_func) => {
+const initDateRangeFilter = (account, filter, render_func) => {
     var div = document.createElement("div")
     div.class = "container"
     var div_start = document.createElement("div")
@@ -141,6 +145,8 @@ const initDateRangeFilter = (filter, render_func) => {
             if (!filter.set_date_beginning(begin.value)) {
                 begin.value = ""
             }
+            refreshCategoryTable(account, filter, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
+            refreshCategoryTable(account, filter, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
             requestAnimationFrame(render_func)
         }
     })
@@ -154,6 +160,8 @@ const initDateRangeFilter = (filter, render_func) => {
             if (!filter.set_date_end(end.value)) {
                 end.value = ""
             }
+            refreshCategoryTable(account, filter, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
+            refreshCategoryTable(account, filter, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
             requestAnimationFrame(render_func)
         }
     })
@@ -216,11 +224,13 @@ const initFilter = (account, filter, render_func) => {
     dateFilterButton.addEventListener("click", event => {
         if (dateHideFilter) {
             dateFilterButton.textContent = "disable filter"
-            initDateRangeFilter(filter, render_func)
+            initDateRangeFilter(account, filter, render_func)
         } else {
             dateFilterButton.textContent = "enable filter"
             removeChildNodesByTagName(dateCluster, "DIV")
             filter.disable_date_option()
+            refreshCategoryTable(account, filter, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
+            refreshCategoryTable(account, filter, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
             requestAnimationFrame(render_func)
         }
 

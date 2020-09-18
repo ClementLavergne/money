@@ -7,7 +7,6 @@ import {
     load_account_data,
     remove_filter_category,
     serialize_account_as_yaml,
-    sum_filtered_orders,
 } from "money"
 
 import {
@@ -27,6 +26,11 @@ import {
     initOrderTable,
 } from "./modules/order-table.js"
 
+import {
+    initCategoryTable,
+    refreshCategoryTable,
+} from "./modules/category-table.js"
+
 // Singleton
 const account = new Account()
 const filter = new Filter()
@@ -45,8 +49,6 @@ const addOrder = document.getElementById("add-order")
 // File management
 const loadData = document.getElementById("load-data")
 const downloadData = document.getElementById("download-data")
-// Sum
-const sum = document.getElementById("sum-canvas")
 // Enumerations
 const categoryTypeEnum = getEnumStrings(CategoryType)
 const resourceCategoryType = enumStringToIndex(categoryTypeEnum, "Resource")
@@ -91,7 +93,10 @@ const refreshCategoryList = (type) => {
         if (list != undefined) {
             // Combobox
             refreshCategoryCombobox(combobox, list)
-            // Checkboxes
+            // Results
+            initCategoryTable(type, list)
+            refreshCategoryTable(account, filter, type, list, categoryType)
+            // Filter
             if (!filter_state) {
                 resetCategoryFilter(type)
                 initCategoryFilter(filter, type, list, render)
@@ -198,8 +203,6 @@ const render = () => {
 
     // Display filtered orders
     initOrderTable(account, filter, render)
-    // Sum
-    sum.textContent = sum_filtered_orders(account, filter).toFixed(2) + '€'
 }
 
 initFilter(account, filter, render)

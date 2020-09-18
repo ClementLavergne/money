@@ -1,4 +1,5 @@
 //! Filtering option which allows or not an `Order` according to its *date*.
+use crate::order::Order;
 pub use chrono::NaiveDate;
 use NaiveDateFilter::{Between, DateIgnored, Since, Until};
 
@@ -69,6 +70,35 @@ impl NaiveDateFilter {
             Between(start_date, end_date)
         } else {
             Since(start_date)
+        }
+    }
+
+    // Evaluates if a given order is allowed or not.
+    pub fn is_order_allowed(&self, order: &Order) -> bool {
+        match self {
+            DateIgnored => true,
+            Until(end) => {
+                if let Some(date) = order.date {
+                    end.signed_duration_since(date).num_days() >= 0
+                } else {
+                    false
+                }
+            }
+            Since(start) => {
+                if let Some(date) = order.date {
+                    date.signed_duration_since(*start).num_days() >= 0
+                } else {
+                    false
+                }
+            }
+            Between(start, end) => {
+                if let Some(date) = order.date {
+                    date.signed_duration_since(*start).num_days() >= 0
+                        && end.signed_duration_since(date).num_days() >= 0
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -225,5 +255,42 @@ mod tests {
         date_filter.set_end(Some(invalid_end));
 
         assert_eq!(date_filter, Since(valid_start));
+    }
+
+    #[test]
+    fn allow_order() {
+        let valid_start = NaiveDate::from_ymd(2020, 2, 3);
+        let valid_end = NaiveDate::from_ymd(2020, 5, 5);
+        let date_filter_1 = DateIgnored;
+        let date_filter_2 = Since(valid_start);
+        let date_filter_3 = Until(valid_end);
+        let date_filter_4 = Between(valid_start, valid_end);
+        let order = Order {
+            date: Some(NaiveDate::from_ymd(2020, 4, 30)),
+            ..Order::default()
+        };
+
+        assert_eq!(date_filter_1.is_order_allowed(&order), true);
+        assert_eq!(date_filter_2.is_order_allowed(&order), true);
+        assert_eq!(date_filter_3.is_order_allowed(&order), true);
+        assert_eq!(date_filter_4.is_order_allowed(&order), true);
+    }
+
+    #[test]
+    fn reject_order() {
+        let valid_start = NaiveDate::from_ymd(2020, 2, 3);
+        let valid_end_1 = NaiveDate::from_ymd(2018, 5, 5);
+        let valid_end_2 = NaiveDate::from_ymd(2020, 5, 5);
+        let date_filter_1 = Since(valid_start);
+        let date_filter_2 = Until(valid_end_1);
+        let date_filter_3 = Between(valid_start, valid_end_2);
+        let order = Order {
+            date: Some(NaiveDate::from_ymd(2019, 4, 30)),
+            ..Order::default()
+        };
+
+        assert_eq!(date_filter_1.is_order_allowed(&order), false);
+        assert_eq!(date_filter_2.is_order_allowed(&order), false);
+        assert_eq!(date_filter_3.is_order_allowed(&order), false);
     }
 }

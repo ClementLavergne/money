@@ -2,12 +2,12 @@
 pub mod category;
 pub mod date;
 
-use super::order::{Order, TransactionState};
+use crate::order::{Order, TransactionState};
 use category::CategoryFilter;
 use category::CategoryFilter::{CategoryIgnored, Enabled};
 pub use chrono::NaiveDate;
 use date::NaiveDateFilter::{Between, DateIgnored, Since, Until};
-use date::{NaiveDateFilter, OptionNaiveDateRange};
+pub use date::{NaiveDateFilter, OptionNaiveDateRange};
 use std::str::FromStr;
 #[cfg(feature = "wasmbind")]
 use wasm_bindgen::prelude::*;
@@ -147,6 +147,11 @@ impl Filter {
 }
 
 impl Filter {
+    /// Getter of attribute *date_option*.
+    pub fn date_option(&self) -> &NaiveDateFilter {
+        &self.date_option
+    }
+
     /// Getter of attribute *tag_option*.
     pub fn tag_option(&self) -> &CategoryFilter {
         &self.tag_option
@@ -180,31 +185,7 @@ impl Filter {
         let state_match = self.state_option[order.state() as usize] == Selected;
 
         // If the date does not satisfy the range, the order will be rejected.
-        let date_match = match self.date_option {
-            DateIgnored => true,
-            Until(end) => {
-                if let Some(date) = order.date {
-                    end.signed_duration_since(date).num_days() >= 0
-                } else {
-                    false
-                }
-            }
-            Since(start) => {
-                if let Some(date) = order.date {
-                    date.signed_duration_since(start).num_days() >= 0
-                } else {
-                    false
-                }
-            }
-            Between(start, end) => {
-                if let Some(date) = order.date {
-                    date.signed_duration_since(start).num_days() >= 0
-                        && end.signed_duration_since(date).num_days() >= 0
-                } else {
-                    false
-                }
-            }
-        };
+        let date_match = self.date_option.is_order_allowed(order);
 
         // If all tags are discarded, the order will be rejected.
         // Unknown tags are not filtered.
