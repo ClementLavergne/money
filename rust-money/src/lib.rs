@@ -461,41 +461,42 @@ mod tests {
                 "Credits".to_string(),
                 "House".to_string(),
                 "Mum & Dad".to_string(),
+                "Work".to_string(),
             ];
-            let saved_account = Account {
+            let mut saved_account = Account {
                 resources: resources.to_vec(),
                 tags: tags.to_vec(),
                 orders: vec![
                     Order {
-                        description: "Gazoline".into(),
-                        date: None,
+                        description: "Initial amount".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 1, 1)),
                         resource: Some(resources[0].clone()),
-                        tags: tags[3..5].to_vec(),
-                        amount: -62.5,
-                        state: TransactionState::InProgress,
-                        visible: true,
-                    },
-                    Order {
-                        description: "GamePass Ultimate".into(),
-                        date: None,
-                        resource: Some(resources[1].clone()),
-                        tags: tags[1..3].to_vec(),
-                        amount: -14.99,
+                        tags: Vec::new(),
+                        amount: 1000.0,
                         state: TransactionState::Done,
                         visible: true,
                     },
                     Order {
-                        description: "Loan".into(),
-                        date: Some(NaiveDate::from_ymd(2020, 10, 2)),
+                        description: "Initial amount".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 1, 1)),
                         resource: Some(resources[1].clone()),
-                        tags: tags[5..7].to_vec(),
-                        amount: -600.0,
-                        state: TransactionState::Pending,
+                        tags: Vec::new(),
+                        amount: 53.5,
+                        state: TransactionState::Done,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Initial amount".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 1, 1)),
+                        resource: Some(resources[2].clone()),
+                        tags: Vec::new(),
+                        amount: 250.0,
+                        state: TransactionState::Done,
                         visible: true,
                     },
                     Order {
                         description: "My Anniversary 🎂".into(),
-                        date: Some(NaiveDate::from_ymd(2020, 10, 11)),
+                        date: Some(NaiveDate::from_ymd(2020, 11, 10)),
                         resource: Some(resources[1].clone()),
                         tags: vec![tags[7].clone()],
                         amount: 50.0,
@@ -503,16 +504,115 @@ mod tests {
                         visible: true,
                     },
                     Order {
-                        description: "Error".into(),
-                        date: None,
+                        description: "Gift".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 6, 20)),
+                        resource: Some(resources[4].clone()),
+                        tags: vec![tags[7].clone()],
+                        amount: 50.0,
+                        state: TransactionState::Pending,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Restaurant".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 4)),
                         resource: Some(resources[1].clone()),
-                        tags: Vec::new(),
-                        amount: -5.35,
+                        tags: vec![tags[0].clone()],
+                        amount: -44.7,
+                        state: TransactionState::InProgress,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Metro".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 4)),
+                        resource: Some(resources[1].clone()),
+                        tags: vec![tags[3].clone()],
+                        amount: -12.99,
                         state: TransactionState::Done,
-                        visible: false,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Music".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 10)),
+                        resource: Some(resources[0].clone()),
+                        tags: vec![tags[1].clone()],
+                        amount: -13.99,
+                        state: TransactionState::InProgress,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Music II".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 10)),
+                        resource: Some(resources[3].clone()),
+                        tags: vec![tags[1].clone(), tags[7].clone()],
+                        amount: -13.99,
+                        state: TransactionState::InProgress,
+                        visible: true,
                     },
                 ],
             };
+
+            (1..=12).for_each(|month| {
+                let order_state = if month <= 3 {
+                    TransactionState::Done
+                } else {
+                    TransactionState::Pending
+                };
+
+                saved_account.orders.push(Order {
+                    description: "Salary".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 3)),
+                    resource: Some(resources[0].clone()),
+                    tags: vec![tags[8].clone()],
+                    amount: 2500.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Loan".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 6)),
+                    resource: Some(resources[0].clone()),
+                    tags: tags[5..=6].to_vec(),
+                    amount: -600.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "GamePass Ultimate".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 15)),
+                    resource: Some(resources[2].clone()),
+                    tags: tags[1..=2].to_vec(),
+                    amount: -14.99,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Transfert".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 25)),
+                    resource: Some(resources[0].clone()),
+                    tags: Vec::new(),
+                    amount: -20.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Transfert".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 25)),
+                    resource: Some(resources[2].clone()),
+                    tags: Vec::new(),
+                    amount: 20.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Gazoline".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 23)),
+                    resource: Some(resources[0].clone()),
+                    tags: tags[3..=5].to_vec(),
+                    amount: -62.5,
+                    state: order_state,
+                    visible: true,
+                });
+            });
 
             // Serialize over a file
             if let Err(error) = saved_account.save_file(Path::new("data.yml")) {
