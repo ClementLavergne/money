@@ -12,27 +12,17 @@ use rust_money::filter::category::{Category, CategoryFilter};
 use rust_money::filter::{Filter, ItemSelector};
 use rust_money::order::{Order, TransactionState};
 pub use rust_money::Account;
+use rust_money::CategoryType::Resource;
+use rust_money::{CategoryAmount, CategoryType};
 use std::convert::TryFrom;
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
-use CategoryType::Resource;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-/// Defines available category types.
-#[wasm_bindgen]
-#[derive(PartialEq, Debug)]
-pub enum CategoryType {
-    /// A **resource** identifies something which represents/holds money.
-    Resource,
-    /// A **tag** identifies a category of expense.
-    /// Could be: an object, a person, a firm, .. it's up to you!
-    Tag,
-}
 
 /// Resets an existing account from **YAML** data.
 /// Returns `true` if operation succeded, `false` otherwise.
@@ -315,14 +305,16 @@ fn serialize_order_as_json(id: usize, order: &Order) -> JsValue {
     JsValue::from(json_order.to_string())
 }
 
-/// Sums each displayed order amount.
+/// Returns the results of a given category within a date range.
+/// Only *date* range of the incoming filter is taken into account.
 #[wasm_bindgen]
-pub fn sum_filtered_orders(account: &Account, filter: &Filter) -> f32 {
-    account
-        .filtered_orders(filter)
-        .iter()
-        .map(|item| item.1.amount)
-        .sum()
+pub fn get_account_category_amount_by_date(
+    account: &Account,
+    kind: CategoryType,
+    category: &str,
+    filter: &Filter,
+) -> Option<CategoryAmount> {
+    account.get_category_amount_by_date(kind, category, &filter.date_option())
 }
 
 #[cfg(test)]

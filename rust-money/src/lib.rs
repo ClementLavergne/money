@@ -8,7 +8,9 @@ pub mod order;
 
 use ext::{ExclusiveItemExt, RequestFailure};
 use filter::Filter;
+use filter::NaiveDateFilter;
 use order::Order;
+use order::TransactionState::{Done, InProgress, Pending};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::fs::File;
@@ -16,6 +18,28 @@ use std::io::prelude::*;
 use std::path::Path;
 #[cfg(feature = "wasmbind")]
 use wasm_bindgen::prelude::*;
+use CategoryType::{Resource, Tag};
+
+/// Defines available category types.
+#[cfg_attr(feature = "wasmbind", wasm_bindgen)]
+#[derive(PartialEq, Debug)]
+pub enum CategoryType {
+    /// A **resource** identifies something which represents/holds money.
+    Resource,
+    /// A **tag** identifies a category of expense.
+    /// Could be: an object, a person, a firm, .. it's up to you!
+    Tag,
+}
+
+/// Gather different amounts for a *category*.
+#[cfg_attr(feature = "wasmbind", wasm_bindgen)]
+#[derive(PartialEq, Debug)]
+pub struct CategoryAmount {
+    pub current: f32,
+    pub pending: f32,
+    pub in_progress: f32,
+    pub expected: f32,
+}
 
 /// Manages account data.
 #[cfg_attr(feature = "wasmbind", wasm_bindgen)]
@@ -129,6 +153,57 @@ impl Account {
             .enumerate()
             .filter(|(_, order)| filter.is_order_allowed(order))
             .collect()
+    }
+
+    /// Computes the different amounts of a *category* according to a date filter.
+    pub fn get_category_amount_by_date(
+        &self,
+        kind: CategoryType,
+        category: &str,
+        date_filter: &NaiveDateFilter,
+    ) -> Option<CategoryAmount> {
+        let mut result = CategoryAmount {
+            current: 0.0,
+            pending: 0.0,
+            in_progress: 0.0,
+            expected: 0.0,
+        };
+        let mut update_amount = |order| {
+            if date_filter.is_order_allowed(order) {
+                match order.state {
+                    Pending => result.pending += order.amount,
+                    InProgress => result.in_progress += order.amount,
+                    Done => result.current += order.amount,
+                }
+
+                result.expected += order.amount;
+            }
+        };
+
+        match kind {
+            Resource => {
+                if self.resources.contains(&category.to_string()) {
+                    self.orders
+                        .iter()
+                        .filter(|order| order.visible && order.resource == Some(category.into()))
+                        .for_each(|order| update_amount(order));
+                    Some(result)
+                } else {
+                    None
+                }
+            }
+            Tag => {
+                if self.tags.contains(&category.to_string()) {
+                    self.orders
+                        .iter()
+                        .filter(|order| order.visible && order.tags.contains(&category.to_string()))
+                        .for_each(|order| update_amount(order));
+                    Some(result)
+                } else {
+                    None
+                }
+            }
+        }
     }
 
     /// Stores data as YAML file.
@@ -454,5 +529,60 @@ mod tests {
 
             assert_eq!(loaded_account, saved_account);
         }
+    }
+
+    #[test]
+    fn compute_overall_resource_amount() {
+        let resources = [String::from("Bank"), String::from("Cash")];
+        let tuples = vec![
+            (resources[0].clone(), -65.4, Done),
+            (resources[1].clone(), -32.83, Done),
+            (resources[1].clone(), -13.99, Pending),
+            (resources[1].clone(), -7.44, InProgress),
+            (resources[1].clone(), 15.00, Pending),
+            (resources[1].clone(), -69.99, InProgress),
+            (resources[1].clone(), 7.99, Done),
+        ];
+        let result = CategoryAmount {
+            current: tuples
+                .iter()
+                .filter(|x| x.0 == resources[1] && x.2 == Done)
+                .fold(0.0, |acc, x| acc + x.1),
+            pending: tuples
+                .iter()
+                .filter(|x| x.0 == resources[1] && x.2 == Pending)
+                .fold(0.0, |acc, x| acc + x.1),
+            in_progress: tuples
+                .iter()
+                .filter(|x| x.0 == resources[1] && x.2 == InProgress)
+                .fold(0.0, |acc, x| acc + x.1),
+            expected: tuples
+                .iter()
+                .filter(|x| x.0 == resources[1])
+                .fold(0.0, |acc, x| acc + x.1),
+        };
+        let orders = tuples
+            .into_iter()
+            .map(|x| Order {
+                resource: Some(x.0),
+                amount: x.1,
+                state: x.2,
+                ..Order::default()
+            })
+            .collect::<Vec<Order>>();
+        let account = Account {
+            resources: resources.to_vec(),
+            orders: orders.to_vec(),
+            ..Account::create()
+        };
+
+        assert_eq!(
+            account.get_category_amount_by_date(
+                Resource,
+                resources[1].as_str(),
+                &NaiveDateFilter::DateIgnored,
+            ),
+            Some(result)
+        );
     }
 }
