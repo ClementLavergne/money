@@ -425,8 +425,7 @@ mod tests {
                 ..Filter::default()
             };
             let filter_2 = Filter {
-                visibility: VisibilityFilter::VisibilityIgnored,
-                tag_option: CategoryFilter::Enabled(tags[..2].to_vec()),
+                tag_option: CategoryFilter::Enabled(vec![tags[1].clone()]),
                 resource_option: CategoryFilter::Enabled(resources.to_vec()),
                 state_option: [
                     ItemSelector::Selected,
@@ -440,10 +439,7 @@ mod tests {
                 account.filtered_orders(&filter_1),
                 vec![orders[0], orders[3]]
             );
-            assert_eq!(
-                account.filtered_orders(&filter_2),
-                vec![orders[2], orders[4]]
-            );
+            assert_eq!(account.filtered_orders(&filter_2), vec![orders[4]]);
         }
 
         #[test]
