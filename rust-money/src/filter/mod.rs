@@ -192,16 +192,25 @@ impl Filter {
         let tag_match = match &self.tag_option {
             CategoryIgnored => true,
             Enabled(tags) => {
-                if !order.tags.is_empty() {
-                    !order.tags.iter().all(|tag| {
+                // At least one tag is selected
+                if tags
+                    .iter()
+                    .fold(false, |acc, tag| acc | (tag.1 == Selected))
+                {
+                    // Accept order if it owns a selected tag
+                    order.tags.iter().fold(false, |acc, tag| {
                         if let Some(index) = tags.iter().position(|item| &item.0 == tag) {
-                            tags[index].1 == Discarded
+                            acc | (tags[index].1 == Selected)
                         } else {
-                            false
+                            acc | false
                         }
                     })
                 } else {
-                    true
+                    // Accept order with neither tag nor unknown ones
+                    order
+                        .tags
+                        .iter()
+                        .all(|tag| tags.iter().position(|item| &item.0 == tag) == None)
                 }
             }
         };
@@ -377,21 +386,13 @@ mod tests {
     }
 
     #[test]
-    fn allow_order_without_each_tag_discarded_only() {
+    fn allow_order_with_a_least_a_selected_tag() {
         let categories = [
-            Category("Car".to_string(), Discarded),
+            Category("Car".to_string(), Selected),
             Category("Mum".to_string(), Discarded),
             Category("Microsoft".to_string(), Selected),
         ];
         let allowed_order_1 = Order {
-            tags: Vec::new(),
-            ..Order::default()
-        };
-        let allowed_order_2 = Order {
-            tags: vec![categories[0].0.clone(), "Unknown".to_string()],
-            ..Order::default()
-        };
-        let allowed_order_3 = Order {
             tags: vec![
                 categories[0].0.clone(),
                 categories[1].0.clone(),
@@ -399,12 +400,24 @@ mod tests {
             ],
             ..Order::default()
         };
+        let allowed_order_2 = Order {
+            tags: vec![categories[0].0.clone()],
+            ..Order::default()
+        };
+        let allowed_order_3 = Order {
+            tags: vec![categories[2].0.clone()],
+            ..Order::default()
+        };
         let rejected_order_1 = Order {
             tags: vec![categories[1].0.clone()],
             ..Order::default()
         };
         let rejected_order_2 = Order {
-            tags: vec![categories[0].0.clone(), categories[1].0.clone()],
+            tags: vec!["Unknown".to_string()],
+            ..Order::default()
+        };
+        let rejected_order_3 = Order {
+            tags: Vec::new(),
             ..Order::default()
         };
         let filter = Filter {
@@ -417,6 +430,51 @@ mod tests {
         assert_eq!(filter.is_order_allowed(&allowed_order_3), true);
         assert_eq!(filter.is_order_allowed(&rejected_order_1), false);
         assert_eq!(filter.is_order_allowed(&rejected_order_2), false);
+        assert_eq!(filter.is_order_allowed(&rejected_order_3), false);
+    }
+
+    #[test]
+    fn allow_order_without_known_tags_only() {
+        let categories = [
+            Category("Car".to_string(), Discarded),
+            Category("Mum".to_string(), Discarded),
+            Category("Microsoft".to_string(), Discarded),
+        ];
+        let allowed_order_1 = Order {
+            tags: Vec::new(),
+            ..Order::default()
+        };
+        let allowed_order_2 = Order {
+            tags: vec!["Unknown".to_string()],
+            ..Order::default()
+        };
+        let allowed_order_3 = Order {
+            tags: vec!["Unknown".to_string(), "Nothing".to_string()],
+            ..Order::default()
+        };
+        let rejected_order_1 = Order {
+            tags: vec![categories[1].0.clone()],
+            ..Order::default()
+        };
+        let rejected_order_2 = Order {
+            tags: vec![categories[0].0.clone(), categories[1].0.clone()],
+            ..Order::default()
+        };
+        let rejected_order_3 = Order {
+            tags: vec![categories[0].0.clone(), "Unknown".to_string()],
+            ..Order::default()
+        };
+        let filter = Filter {
+            tag_option: Enabled(categories.to_vec()),
+            ..Filter::default()
+        };
+
+        assert_eq!(filter.is_order_allowed(&allowed_order_1), true);
+        assert_eq!(filter.is_order_allowed(&allowed_order_2), true);
+        assert_eq!(filter.is_order_allowed(&allowed_order_3), true);
+        assert_eq!(filter.is_order_allowed(&rejected_order_1), false);
+        assert_eq!(filter.is_order_allowed(&rejected_order_2), false);
+        assert_eq!(filter.is_order_allowed(&rejected_order_3), false);
     }
 
     #[test]
