@@ -8,7 +8,6 @@ import {
     set_account_order_state,
     delete_account_order,
     toggle_account_order_visibility,
-    get_account_filtered_orders,
     TransactionState,
     CategoryType,
 } from "money"
@@ -24,7 +23,7 @@ import {
     getEnumStrings,
 } from "./utils.js"
 
-export { initOrderTable }
+export { initOrderTable, addOrderRow }
 
 // Enumerations
 const transactionStateEnum = getEnumStrings(TransactionState)
@@ -96,8 +95,8 @@ const addOrderRow = (order, account, filter, render_func) => {
             const float = parseFloat(amount.value.replace('€',''))
             if (set_account_order_amount(account, order.id, float)) {
                 console.log("Order " + order.id + " amount: " + float.toFixed(2))
-                refreshCategoryTable(account, filter, "Resource", resourceList, resourceCategoryType)
-                refreshCategoryTable(account, filter, "Tag", tagList, tagCategoryType)
+                refreshCategoryTable(account, "Resource", resourceList, resourceCategoryType)
+                refreshCategoryTable(account, "Tag", tagList, tagCategoryType)
                 requestAnimationFrame(render_func)
             }
         }
@@ -125,7 +124,7 @@ const addOrderRow = (order, account, filter, render_func) => {
     resource.addEventListener('change', function() {
         if (set_account_order_resource(account, order.id, this.value)) {
             console.log("Order " + order.id + " resource: " + this.value)
-            refreshCategoryTable(account, filter, "Resource", resourceList, resourceCategoryType)
+            refreshCategoryTable(account, "Resource", resourceList, resourceCategoryType)
             requestAnimationFrame(render_func)
         }
     }, false)
@@ -154,7 +153,7 @@ const addOrderRow = (order, account, filter, render_func) => {
 
         if (set_account_order_tags(account, order.id, selectedValues)) {
             console.log("Order " + order.id + " tags: " + selectedValues)
-            refreshCategoryTable(account, filter, "Tag", tagList, tagCategoryType)
+            refreshCategoryTable(account, "Tag", tagList, tagCategoryType)
             requestAnimationFrame(render_func)
         } else {
             console.error("Unknown ", order.id, selectedValues)
@@ -175,8 +174,8 @@ const addOrderRow = (order, account, filter, render_func) => {
         const index = enumStringToIndex(transactionStateEnum, this.value)
         if (set_account_order_state(account, order.id, index)) {
             console.log("Order " + order.id + " state: " + this.value)
-            refreshCategoryTable(account, filter, "Resource", resourceList, resourceCategoryType)
-            refreshCategoryTable(account, filter, "Tag", tagList, tagCategoryType)
+            refreshCategoryTable(account, "Resource", resourceList, resourceCategoryType)
+            refreshCategoryTable(account, "Tag", tagList, tagCategoryType)
             requestAnimationFrame(render_func)
         }
     }, false)
@@ -190,8 +189,8 @@ const addOrderRow = (order, account, filter, render_func) => {
         remove_button.addEventListener('click', event => {
             if (toggle_account_order_visibility(account, order.id)) {
                 console.log("Order " + order.id + ": removed!")
-                refreshCategoryTable(account, filter, "Resource", resourceList, resourceCategoryType)
-                refreshCategoryTable(account, filter, "Tag", tagList, tagCategoryType)
+                refreshCategoryTable(account, "Resource", resourceList, resourceCategoryType)
+                refreshCategoryTable(account, "Tag", tagList, tagCategoryType)
             }
             requestAnimationFrame(render_func)
         })
@@ -226,7 +225,7 @@ const addOrderRow = (order, account, filter, render_func) => {
         restore_button.addEventListener('click', event => {
             if (toggle_account_order_visibility(account, order.id)) {
                 console.log("Order " + order.id + ": restored!")
-                refreshCategoryTable(account, filter, "Resource", resourceList, resourceCategoryType)
+                refreshCategoryTable(account, "Resource", resourceList, resourceCategoryType)
             }
             requestAnimationFrame(render_func)
         })
@@ -243,27 +242,15 @@ const addOrderRow = (order, account, filter, render_func) => {
     }
 }
 
-const initOrderTable = (account, filter, render_func) => {
-    const orders = get_account_filtered_orders(account, filter)
+const initOrderTable = () => {
+    // Header
+    var header = ordersTable.createTHead()
+    var row = header.insertRow()
+    const titles = ["Date", "Description", "Amount", "Resource", "Tags", "State", "", ""]
+    titles.forEach(element => {
+        row.insertCell().innerHTML = element.bold()
+    })
 
-    if (!orders.length == 0) {
-        // Header
-        var header = ordersTable.createTHead()
-        var row = header.insertRow()
-        const titles = ["Date", "Description", "Amount", "Resource", "Tags", "State", "", ""]
-        titles.forEach(element => {
-            row.insertCell().innerHTML = element.bold()
-        })
-
-        // Remove all rows
-        clearTableRows(ordersTable)
-
-        // Rows
-        orders.forEach(function(item) {
-            addOrderRow(JSON.parse(item), account, filter, render_func)
-        })
-    } else {
-        // Remove all rows
-        clearTableRows(ordersTable)
-    }
+    // Remove all rows
+    clearTableRows(ordersTable)
 }

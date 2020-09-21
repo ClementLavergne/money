@@ -9,7 +9,7 @@ use chrono::NaiveDate;
 use js_sys::Array;
 use rust_money::ext::ExclusiveItemExt;
 use rust_money::filter::category::{Category, CategoryFilter};
-use rust_money::filter::{Filter, ItemSelector};
+use rust_money::filter::{Filter, ItemSelector, OptionNaiveDateRange};
 use rust_money::order::{Order, TransactionState};
 pub use rust_money::Account;
 use rust_money::CategoryType::Resource;
@@ -309,16 +309,38 @@ fn serialize_order_as_json(id: usize, order: &Order) -> JsValue {
     JsValue::from(json_order.to_string())
 }
 
-/// Returns the results of a given category within a date range.
-/// Only *date* range of the incoming filter is taken into account.
+/// Returns the results of a category at a specific date.
 #[wasm_bindgen]
-pub fn get_account_category_amount_by_date(
+pub fn get_account_absolute_category_amount_by_date(
     account: &Account,
     kind: CategoryType,
     category: &str,
-    filter: &Filter,
+    date: &str,
 ) -> Option<CategoryAmount> {
-    account.get_category_amount_by_date(kind, category, &filter.date_option())
+    account.get_category_amount(
+        kind,
+        category,
+        OptionNaiveDateRange(None, NaiveDate::from_str(date).ok()),
+    )
+}
+
+/// Returns the results of a category within a date range.
+#[wasm_bindgen]
+pub fn get_account_relative_category_amount_by_date(
+    account: &Account,
+    kind: CategoryType,
+    category: &str,
+    start_date: &str,
+    end_date: &str,
+) -> Option<CategoryAmount> {
+    account.get_category_amount(
+        kind,
+        category,
+        OptionNaiveDateRange(
+            NaiveDate::from_str(start_date).ok(),
+            NaiveDate::from_str(end_date).ok(),
+        ),
+    )
 }
 
 #[cfg(test)]

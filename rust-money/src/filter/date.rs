@@ -103,6 +103,14 @@ impl NaiveDateFilter {
     }
 }
 
+impl From<OptionNaiveDateRange> for NaiveDateFilter {
+    fn from(range: OptionNaiveDateRange) -> Self {
+        let mut filter = DateIgnored;
+        filter.set_range(range);
+        filter
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

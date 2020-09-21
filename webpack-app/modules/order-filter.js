@@ -137,16 +137,18 @@ const initDateRangeFilter = (account, filter, render_func) => {
     label_stop.appendChild(document.createTextNode("Stop"))
     var begin = document.createElement("input")
     begin.type = "text"
+    begin.id = "date-filter-begin"
     var end = document.createElement("input")
     end.type = "text"
+    end.id = "date-filter-end"
 
     begin.addEventListener('keyup', ({key}) => {
         if (key === "Enter") {
             if (!filter.set_date_beginning(begin.value)) {
                 begin.value = ""
             }
-            refreshCategoryTable(account, filter, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
-            refreshCategoryTable(account, filter, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
+            refreshCategoryTable(account, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
+            refreshCategoryTable(account, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
             requestAnimationFrame(render_func)
         }
     })
@@ -162,8 +164,8 @@ const initDateRangeFilter = (account, filter, render_func) => {
             if (!filter.set_date_end(end.value)) {
                 end.value = ""
             }
-            refreshCategoryTable(account, filter, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
-            refreshCategoryTable(account, filter, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
+            refreshCategoryTable(account, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
+            refreshCategoryTable(account, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
             requestAnimationFrame(render_func)
         }
     })
@@ -187,7 +189,11 @@ const initFilter = (account, filter, render_func) => {
     // Enable/Disable resources filtering
     resourcesFilterButton.addEventListener("click", event => {
         const categoryType = resourceCategoryType
-        if (resourcesHideFilter) {
+
+        // Toggle
+        resourcesHideFilter = !resourcesHideFilter
+
+        if (!resourcesHideFilter) {
             resourcesFilterButton.textContent = "disable filter"
 
             const resources = get_account_categories(account, categoryType)
@@ -199,15 +205,16 @@ const initFilter = (account, filter, render_func) => {
             clear_filter_categories(filter, categoryType)
             requestAnimationFrame(render_func)
         }
-
-        // Toggle
-        resourcesHideFilter = !resourcesHideFilter
     })
 
     // Enable/Disable tags filtering
     tagsFilterButton.addEventListener("click", event => {
         const categoryType = tagCategoryType
-        if (tagsHideFilter) {
+
+        // Toggle
+        tagsHideFilter = !tagsHideFilter
+
+        if (!tagsHideFilter) {
             tagsFilterButton.textContent = "disable filter"
 
             const tags = get_account_categories(account, categoryType)
@@ -219,27 +226,24 @@ const initFilter = (account, filter, render_func) => {
             clear_filter_categories(filter, categoryType)
             requestAnimationFrame(render_func)
         }
-
-        // Toggle
-        tagsHideFilter = !tagsHideFilter
     })
 
     // Enable/Disable date filtering
     dateFilterButton.addEventListener("click", event => {
-        if (dateHideFilter) {
+        // Toggle
+        dateHideFilter = !dateHideFilter
+
+        if (!dateHideFilter) {
             dateFilterButton.textContent = "disable filter"
             initDateRangeFilter(account, filter, render_func)
         } else {
             dateFilterButton.textContent = "enable filter"
             removeChildNodesByTagName(dateCluster, "DIV")
             filter.disable_date_option()
-            refreshCategoryTable(account, filter, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
-            refreshCategoryTable(account, filter, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
+            refreshCategoryTable(account, "Resource", get_account_categories(account, resourceCategoryType), resourceCategoryType)
+            refreshCategoryTable(account, "Tag", get_account_categories(account, tagCategoryType), tagCategoryType)
             requestAnimationFrame(render_func)
         }
-
-        // Toggle
-        dateHideFilter = !dateHideFilter
     })
 
     // Initialize visibility filter
