@@ -105,8 +105,9 @@ impl Account {
     }
 
     /// Creates a default order.
-    pub fn add_order(&mut self) {
+    pub fn add_order(&mut self) -> usize {
         self.orders.push(Order::default());
+        self.orders.len() - 1
     }
 
     /// Deletes all hidden orders.
