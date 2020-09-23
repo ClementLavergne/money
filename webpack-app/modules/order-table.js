@@ -54,7 +54,9 @@ const addOrderRow = (order, account, filter, render_func) => {
         }
     })
     date.addEventListener('click', () => {
-        date.value = dateString(new Date())
+        if (date.value == "") {
+            date.value = dateString(new Date())
+        }
     })
     row.insertCell().appendChild(date)
 
