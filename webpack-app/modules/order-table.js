@@ -78,6 +78,15 @@ const addOrderRow = (order, account, filter, render_func) => {
     var amount = document.createElement("input")
     amount.type = "text"
     amount.value = order.order.amount.toFixed(2) + "€"
+
+    if (order.order.amount > 0.0) {
+        amount.style.backgroundColor = "lightgreen"
+    } else if (order.order.amount < 0.0) {
+        amount.style.backgroundColor = "lightsalmon"
+    } else {
+        amount.style.backgroundColor = "transparent"
+    }
+
     amount.addEventListener('keyup', ({key}) => {
         if (key === "Enter") {
             if (amount.value == "") {
