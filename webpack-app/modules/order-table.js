@@ -84,7 +84,7 @@ const addOrderRow = (order, account, filter, render_func) => {
                 amount.value = "0.0"
             }
 
-            const float = parseFloat(amount.value)
+            const float = parseFloat(amount.value.replace('€',''))
             if (set_account_order_amount(account, order.id, float)) {
                 console.log("Order " + order.id + " amount: " + float.toFixed(2))
                 refreshCategoryTable(account, filter, "Resource", resourceList, resourceCategoryType)
@@ -92,9 +92,6 @@ const addOrderRow = (order, account, filter, render_func) => {
                 requestAnimationFrame(render_func)
             }
         }
-    })
-    amount.addEventListener('click', event => {
-        amount.value = ""
     })
     row.insertCell().appendChild(amount)
 
