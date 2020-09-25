@@ -52,19 +52,23 @@
       </fieldset>
     </div>
 
-    <h2>Balance</h2>
-    <div class="container">
+    <h2>Orders</h2>
+    <table id="orders">
+    </table>
+    <button type="button" id="add-order">add order</button>
+    <br /><br />
+
+    <h2>Results</h2>
+    <div class="chart-container" style="position: relative; height:40vh; width:80vw">
+      <canvas id="transactionChart"></canvas>
+      <canvas id="balanceChart"></canvas>
+      <canvas id="resourceChart"></canvas>
       <table id="overall-Resource">
       </table>
+      <canvas id="tagChart"></canvas>
       <table id="overall-Tag">
       </table>
     </div>
-
-    <h2>Orders</h2>
-    <button type="button" id="add-order">add order</button>
-    <table id="orders">
-    </table>
-    <br /><br />
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
     <script src="./bootstrap.js"></script>
   </body>

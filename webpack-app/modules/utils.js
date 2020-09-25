@@ -8,6 +8,7 @@ export {
     dateString,
     firstDayCurrentMonthString,
     lastDayCurrentMonthString,
+    lastDayPreviousMonthString,
 }
 
 const getEnumStrings = (type) => {
@@ -81,16 +82,20 @@ const dateString = (date) => {
     return yyyy + '-' + mm + '-' + dd;
 }
 
-const firstDayCurrentMonthString = () => {
-    const today = new Date()
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+const firstDayCurrentMonthString = (current) => {
+    const firstDay = new Date(current.getFullYear(), current.getMonth(), 1)
 
     return dateString(firstDay)
 }
 
-const lastDayCurrentMonthString = () => {
-    var today = new Date()
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+const lastDayCurrentMonthString = (current) => {
+    const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0)
+
+    return dateString(lastDay)
+}
+
+const lastDayPreviousMonthString = (current) => {
+    const lastDay = new Date(current.getFullYear(), current.getMonth(), 0)
 
     return dateString(lastDay)
 }

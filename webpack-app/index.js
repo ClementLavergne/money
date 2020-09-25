@@ -4,12 +4,14 @@ import {
     CategoryType,
     Filter,
     get_account_categories,
+    get_account_filtered_orders,
     load_account_data,
     remove_filter_category,
     serialize_account_as_yaml,
 } from "money"
 
 import {
+    clearTableRows,
     getEnumStrings,
     enumStringToIndex,
 } from "./modules/utils.js"
@@ -24,12 +26,24 @@ import {
 
 import {
     initOrderTable,
+    addOrderRow,
 } from "./modules/order-table.js"
 
 import {
     initCategoryTable,
     refreshCategoryTable,
 } from "./modules/category-table.js"
+
+import {
+    refreshBalanceChart,
+    clearBalanceChart,
+    refreshResourceChart,
+    clearResourceChart,
+    refreshTagChart,
+    clearTagChart,
+    refreshTransactionChart,
+    clearTransactionChart,
+} from "./modules/category-charts.js"
 
 // Singleton
 const account = new Account()
@@ -46,6 +60,7 @@ const addResource = document.getElementById("add-resource")
 const removeResource = document.getElementById("remove-resource")
 // Orders
 const addOrder = document.getElementById("add-order")
+const ordersTable = document.getElementById("orders")
 // File management
 const loadData = document.getElementById("load-data")
 const downloadData = document.getElementById("download-data")
@@ -77,11 +92,13 @@ const refreshCategoryList = (type) => {
             combobox = tagsList
             categoryType = tagCategoryType
             filter_state = tagsHideFilter
+            clearTagChart()
             break;
         case "Resource":
             combobox = resourcesList
             categoryType = resourceCategoryType
             filter_state = resourcesHideFilter
+            clearResourceChart()
             break;
         default:
             error = true
@@ -95,7 +112,8 @@ const refreshCategoryList = (type) => {
             refreshCategoryCombobox(combobox, list)
             // Results
             initCategoryTable(type, list)
-            refreshCategoryTable(account, filter, type, list, categoryType)
+            refreshCategoryTable(account, type, list, categoryType)
+
             // Filter
             if (!filter_state) {
                 resetCategoryFilter(type)
@@ -199,10 +217,59 @@ downloadData.addEventListener("click", event => {
 })
 
 const render = () => {
+    const orders = get_account_filtered_orders(account, filter)
     console.log("Render!")
 
-    // Display filtered orders
-    initOrderTable(account, filter, render)
+    if (!orders.length == 0) {
+        var dateOrders = new Map()
+        var firstDays = []
+
+        initOrderTable()
+
+        orders.forEach(function(item) {
+            const order = JSON.parse(item)
+            const date = order.order.date
+
+            // Row
+            addOrderRow(order, account, filter, render)
+
+            if (order.order.visible) {
+                // Gather visible orders of the same date
+                if (!dateOrders.has(date)) {
+                    dateOrders.set(date, [order.order])
+                } else {
+                    dateOrders.set(date, [order.order, ...dateOrders.get(date)])
+                }
+
+                // Capture each month
+                if (date != null) {
+                    const date_split = date.split('-')
+                    const firstDayMonth = date_split[0] + '-' + date_split[1] + '-01'
+
+                    if (!firstDays.includes(firstDayMonth)) {
+                        firstDays.push(firstDayMonth)
+                    }
+                }
+            }
+        })
+
+        // Sort data
+        const sortedDates = Array.from(dateOrders.keys()).sort();
+        firstDays.sort()
+        firstDays[0] = sortedDates[0]
+
+        // Refresh charts
+        refreshBalanceChart(firstDays, account)
+        refreshResourceChart(dateOrders, sortedDates, account)
+        refreshTagChart(dateOrders, sortedDates, account)
+        refreshTransactionChart(dateOrders, sortedDates)
+    } else {
+        // Remove all rows
+        clearTableRows(ordersTable)
+        // Remove all charts
+        clearBalanceChart()
+        clearTransactionChart()
+    }
 }
 
 initFilter(account, filter, render)

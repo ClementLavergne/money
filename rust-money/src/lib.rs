@@ -8,7 +8,7 @@ pub mod order;
 
 use ext::{ExclusiveItemExt, RequestFailure};
 use filter::Filter;
-use filter::NaiveDateFilter;
+use filter::{NaiveDateFilter, OptionNaiveDateRange};
 use order::Order;
 use order::TransactionState::{Done, InProgress, Pending};
 use serde::{Deserialize, Serialize};
@@ -156,12 +156,12 @@ impl Account {
             .collect()
     }
 
-    /// Computes the different amounts of a *category* according to a date filter.
-    pub fn get_category_amount_by_date(
+    /// Computes the different amounts of a *category* between a given range.
+    pub fn get_category_amount(
         &self,
         kind: CategoryType,
         category: &str,
-        date_filter: &NaiveDateFilter,
+        date_range: OptionNaiveDateRange,
     ) -> Option<CategoryAmount> {
         let mut result = CategoryAmount {
             current: 0.0,
@@ -169,17 +169,18 @@ impl Account {
             in_progress: 0.0,
             expected: 0.0,
         };
-        let mut update_amount = |order| {
-            if date_filter.is_order_allowed(order) {
-                match order.state {
-                    Pending => result.pending += order.amount,
-                    InProgress => result.in_progress += order.amount,
-                    Done => result.current += order.amount,
-                }
-
-                result.expected += order.amount;
+        let mut nb_orders = 0;
+        let mut update_amount = |order: &Order| {
+            match order.state {
+                Pending => result.pending += order.amount,
+                InProgress => result.in_progress += order.amount,
+                Done => result.current += order.amount,
             }
+
+            result.expected += order.amount;
+            nb_orders += 1;
         };
+        let date_filter = NaiveDateFilter::from(date_range);
 
         match kind {
             Resource => {
@@ -187,8 +188,14 @@ impl Account {
                     self.orders
                         .iter()
                         .filter(|order| order.visible && order.resource == Some(category.into()))
+                        .filter(|order| date_filter.is_order_allowed(order))
                         .for_each(|order| update_amount(order));
-                    Some(result)
+
+                    if nb_orders > 0 {
+                        Some(result)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -198,8 +205,14 @@ impl Account {
                     self.orders
                         .iter()
                         .filter(|order| order.visible && order.tags.contains(&category.to_string()))
+                        .filter(|order| date_filter.is_order_allowed(order))
                         .for_each(|order| update_amount(order));
-                    Some(result)
+
+                    if nb_orders > 0 {
+                        Some(result)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -461,41 +474,42 @@ mod tests {
                 "Credits".to_string(),
                 "House".to_string(),
                 "Mum & Dad".to_string(),
+                "Work".to_string(),
             ];
-            let saved_account = Account {
+            let mut saved_account = Account {
                 resources: resources.to_vec(),
                 tags: tags.to_vec(),
                 orders: vec![
                     Order {
-                        description: "Gazoline".into(),
-                        date: None,
+                        description: "Initial amount".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 1, 1)),
                         resource: Some(resources[0].clone()),
-                        tags: tags[3..5].to_vec(),
-                        amount: -62.5,
-                        state: TransactionState::InProgress,
-                        visible: true,
-                    },
-                    Order {
-                        description: "GamePass Ultimate".into(),
-                        date: None,
-                        resource: Some(resources[1].clone()),
-                        tags: tags[1..3].to_vec(),
-                        amount: -14.99,
+                        tags: Vec::new(),
+                        amount: 1000.0,
                         state: TransactionState::Done,
                         visible: true,
                     },
                     Order {
-                        description: "Loan".into(),
-                        date: Some(NaiveDate::from_ymd(2020, 10, 2)),
+                        description: "Initial amount".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 1, 1)),
                         resource: Some(resources[1].clone()),
-                        tags: tags[5..7].to_vec(),
-                        amount: -600.0,
-                        state: TransactionState::Pending,
+                        tags: Vec::new(),
+                        amount: 53.5,
+                        state: TransactionState::Done,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Initial amount".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 1, 1)),
+                        resource: Some(resources[2].clone()),
+                        tags: Vec::new(),
+                        amount: 250.0,
+                        state: TransactionState::Done,
                         visible: true,
                     },
                     Order {
                         description: "My Anniversary 🎂".into(),
-                        date: Some(NaiveDate::from_ymd(2020, 10, 11)),
+                        date: Some(NaiveDate::from_ymd(2020, 11, 10)),
                         resource: Some(resources[1].clone()),
                         tags: vec![tags[7].clone()],
                         amount: 50.0,
@@ -503,16 +517,115 @@ mod tests {
                         visible: true,
                     },
                     Order {
-                        description: "Error".into(),
-                        date: None,
+                        description: "Gift".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 6, 20)),
+                        resource: Some(resources[4].clone()),
+                        tags: vec![tags[7].clone()],
+                        amount: 50.0,
+                        state: TransactionState::Pending,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Restaurant".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 4)),
                         resource: Some(resources[1].clone()),
-                        tags: Vec::new(),
-                        amount: -5.35,
+                        tags: vec![tags[0].clone()],
+                        amount: -44.7,
+                        state: TransactionState::InProgress,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Metro".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 4)),
+                        resource: Some(resources[1].clone()),
+                        tags: vec![tags[3].clone()],
+                        amount: -12.99,
                         state: TransactionState::Done,
-                        visible: false,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Music".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 10)),
+                        resource: Some(resources[0].clone()),
+                        tags: vec![tags[1].clone()],
+                        amount: -13.99,
+                        state: TransactionState::InProgress,
+                        visible: true,
+                    },
+                    Order {
+                        description: "Music II".into(),
+                        date: Some(NaiveDate::from_ymd(2020, 3, 10)),
+                        resource: Some(resources[3].clone()),
+                        tags: vec![tags[1].clone(), tags[7].clone()],
+                        amount: -13.99,
+                        state: TransactionState::InProgress,
+                        visible: true,
                     },
                 ],
             };
+
+            (1..=12).for_each(|month| {
+                let order_state = if month <= 3 {
+                    TransactionState::Done
+                } else {
+                    TransactionState::Pending
+                };
+
+                saved_account.orders.push(Order {
+                    description: "Salary".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 3)),
+                    resource: Some(resources[0].clone()),
+                    tags: vec![tags[8].clone()],
+                    amount: 2500.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Loan".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 6)),
+                    resource: Some(resources[0].clone()),
+                    tags: tags[5..=6].to_vec(),
+                    amount: -600.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "GamePass Ultimate".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 15)),
+                    resource: Some(resources[2].clone()),
+                    tags: tags[1..=2].to_vec(),
+                    amount: -14.99,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Transfert".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 25)),
+                    resource: Some(resources[0].clone()),
+                    tags: Vec::new(),
+                    amount: -20.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Transfert".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 25)),
+                    resource: Some(resources[2].clone()),
+                    tags: Vec::new(),
+                    amount: 20.0,
+                    state: order_state,
+                    visible: true,
+                });
+                saved_account.orders.push(Order {
+                    description: "Gazoline".into(),
+                    date: Some(NaiveDate::from_ymd(2020, month, 23)),
+                    resource: Some(resources[0].clone()),
+                    tags: tags[3..=5].to_vec(),
+                    amount: -62.5,
+                    state: order_state,
+                    visible: true,
+                });
+            });
 
             // Serialize over a file
             if let Err(error) = saved_account.save_file(Path::new("data.yml")) {
@@ -574,12 +687,156 @@ mod tests {
         };
 
         assert_eq!(
-            account.get_category_amount_by_date(
+            account.get_category_amount(
                 Resource,
                 resources[1].as_str(),
-                &NaiveDateFilter::DateIgnored,
+                OptionNaiveDateRange(None, None)
             ),
             Some(result)
+        );
+    }
+
+    #[test]
+    fn compute_resource_amount_at_date() {
+        let resources = [String::from("Bank")];
+        let tuples = vec![
+            (
+                Some(NaiveDate::from_ymd(2020, 1, 1)),
+                resources[0].clone(),
+                -65.4,
+                Pending,
+            ),
+            (
+                Some(NaiveDate::from_ymd(2020, 2, 1)),
+                resources[0].clone(),
+                -32.83,
+                InProgress,
+            ),
+            (
+                Some(NaiveDate::from_ymd(2020, 3, 1)),
+                resources[0].clone(),
+                -13.99,
+                Done,
+            ),
+            (
+                Some(NaiveDate::from_ymd(2020, 4, 1)),
+                resources[0].clone(),
+                -7.44,
+                Done,
+            ),
+            (
+                Some(NaiveDate::from_ymd(2020, 5, 1)),
+                resources[0].clone(),
+                15.00,
+                Pending,
+            ),
+            (
+                Some(NaiveDate::from_ymd(2020, 6, 1)),
+                resources[0].clone(),
+                -69.99,
+                Pending,
+            ),
+            (
+                Some(NaiveDate::from_ymd(2020, 7, 1)),
+                resources[0].clone(),
+                7.99,
+                Pending,
+            ),
+        ];
+        let desired_date = NaiveDate::from_ymd(2020, 6, 12);
+        let result = CategoryAmount {
+            current: tuples
+                .iter()
+                .filter(|x| {
+                    desired_date.signed_duration_since(x.0.unwrap()).num_days() >= 0 && x.3 == Done
+                })
+                .fold(0.0, |acc, x| acc + x.2),
+            pending: tuples
+                .iter()
+                .filter(|x| {
+                    desired_date.signed_duration_since(x.0.unwrap()).num_days() >= 0
+                        && x.3 == Pending
+                })
+                .fold(0.0, |acc, x| acc + x.2),
+            in_progress: tuples
+                .iter()
+                .filter(|x| {
+                    desired_date.signed_duration_since(x.0.unwrap()).num_days() >= 0
+                        && x.3 == InProgress
+                })
+                .fold(0.0, |acc, x| acc + x.2),
+            expected: tuples
+                .iter()
+                .filter(|x| desired_date.signed_duration_since(x.0.unwrap()).num_days() >= 0)
+                .fold(0.0, |acc, x| acc + x.2),
+        };
+        let orders = tuples
+            .into_iter()
+            .map(|x| Order {
+                date: x.0,
+                resource: Some(x.1),
+                amount: x.2,
+                state: x.3,
+                ..Order::default()
+            })
+            .collect::<Vec<Order>>();
+        let account = Account {
+            resources: resources.to_vec(),
+            orders: orders.to_vec(),
+            ..Account::create()
+        };
+
+        assert_eq!(
+            account.get_category_amount(
+                Resource,
+                resources[0].as_str(),
+                OptionNaiveDateRange(None, Some(desired_date))
+            ),
+            Some(result)
+        );
+    }
+
+    #[test]
+    fn no_category_amount_at_date() {
+        let resources = [String::from("Bank")];
+        let tuples = vec![
+            (
+                Some(NaiveDate::from_ymd(2020, 1, 1)),
+                resources[0].clone(),
+                -65.4,
+                Pending,
+            ),
+            (
+                Some(NaiveDate::from_ymd(2020, 2, 1)),
+                resources[0].clone(),
+                -32.83,
+                InProgress,
+            ),
+        ];
+        let desired_date = NaiveDate::from_ymd(2020, 6, 12);
+        let orders = tuples
+            .into_iter()
+            .map(|x| Order {
+                date: x.0,
+                resource: Some(x.1),
+                amount: x.2,
+                state: x.3,
+                ..Order::default()
+            })
+            .collect::<Vec<Order>>();
+        let account = Account {
+            resources: resources.to_vec(),
+            orders: orders.to_vec(),
+            ..Account::create()
+        };
+
+        assert_eq!(
+            account.get_category_amount(
+                Resource,
+                "Cash",
+                OptionNaiveDateRange(None, Some(desired_date))
+            ),
+            None
         );
     }
 }

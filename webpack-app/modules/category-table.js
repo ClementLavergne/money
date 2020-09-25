@@ -1,10 +1,14 @@
 import {
-    get_account_category_amount_by_date,
+    get_account_absolute_category_amount_by_date,
 } from "money"
 
 import {
     clearTableRows
 } from "./utils.js"
+
+import {
+    dateHideFilter,
+} from "./order-filter.js"
 
 export { initCategoryTable, refreshCategoryTable }
 
@@ -46,13 +50,21 @@ const initCategoryTable = (type, list) => {
     }
 }
 
-const refreshCategoryTable = (account, filter, type, list, categoryTypeId) => {
+const refreshCategoryTable = (account, type, list, categoryTypeId) => {
     var expected = 0.0
     var current = 0.0
     var inProgress = 0.0
     var pending = 0.0
+    var end_date = ""
+
+    // Date filtering
+    if (!dateHideFilter) {
+        end_date = document.getElementById("date-filter-end").value
+    }
+
+    // Table content
     list.forEach(function(item) {
-        const amount = get_account_category_amount_by_date(account, categoryTypeId, item, filter)
+        const amount = get_account_absolute_category_amount_by_date(account, categoryTypeId, item, end_date)
         if (amount != undefined) {
             // Update displayed text
             const expectedCell = document.getElementById("expected-" + type + "-" + item + "-amount")
