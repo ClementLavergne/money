@@ -152,7 +152,9 @@ const initDateRangeFilter = (account, filter, render_func) => {
     })
 
     begin.addEventListener('click', () => {
-        begin.value = firstDayCurrentMonthString()
+        if (begin.value == "") {
+            begin.value = firstDayCurrentMonthString(new Date())
+        }
     })
 
     end.addEventListener('keyup', ({key}) => {
@@ -167,7 +169,9 @@ const initDateRangeFilter = (account, filter, render_func) => {
     })
 
     end.addEventListener('click', () => {
-        end.value = lastDayCurrentMonthString()
+        if (end.value == "") {
+            end.value = lastDayCurrentMonthString(new Date())
+        }
     })
 
     div_start.appendChild(begin)

@@ -55,13 +55,30 @@ const refreshCategoryTable = (account, filter, type, list, categoryTypeId) => {
         const amount = get_account_category_amount_by_date(account, categoryTypeId, item, filter)
         if (amount != undefined) {
             // Update displayed text
-            document.getElementById("expected-" + type + "-" + item + "-amount").innerHTML = amount.expected.toFixed(2) + '€'
-            document.getElementById("current-" + type + "-" + item + "-amount").innerHTML = amount.current.toFixed(2) + '€'
+            const expectedCell = document.getElementById("expected-" + type + "-" + item + "-amount")
+            expectedCell.innerHTML = amount.expected.toFixed(2) + '€'
+            if (amount.expected > 0.0) {
+                expectedCell.bgColor = 'lightgreen'
+            } else if (amount.expected < 0.0) {
+                expectedCell.bgColor = 'lightsalmon'
+            } else {
+                expectedCell.bgColor = 'transparent'
+            }
+
+            const currentCell = document.getElementById("current-" + type + "-" + item + "-amount")
+            currentCell.innerHTML = amount.current.toFixed(2) + '€'
+            if (amount.current > 0.0) {
+                currentCell.bgColor = 'lightgreen'
+            } else if (amount.current < 0.0) {
+                currentCell.bgColor = 'lightsalmon'
+            } else {
+                currentCell.bgColor = 'transparent'
+            }
 
             const inProgressCell = document.getElementById("inprogress-" + type + "-" + item + "-amount")
             inProgressCell.innerHTML = amount.in_progress.toFixed(2) + '€'
             if (amount.in_progress != 0.0) {
-                inProgressCell.bgColor = 'yellow'
+                inProgressCell.bgColor = 'lightsalmon'
             } else {
                 inProgressCell.bgColor = 'transparent'
             }
@@ -69,7 +86,7 @@ const refreshCategoryTable = (account, filter, type, list, categoryTypeId) => {
             const pendingCell = document.getElementById("pending-" + type + "-" + item + "-amount")
             pendingCell.innerHTML = amount.pending.toFixed(2) + '€'
             if (amount.pending != 0.0) {
-                pendingCell.bgColor = 'red'
+                pendingCell.bgColor = 'lightsalmon'
             } else {
                 pendingCell.bgColor = 'transparent'
             }
@@ -81,25 +98,42 @@ const refreshCategoryTable = (account, filter, type, list, categoryTypeId) => {
         }
     })
 
-    if (type == "Resource") {
+    if ((list.length > 0) && (type == "Resource")) {
         // Update displayed total
-        document.getElementById("expected-" + type + "-amount").innerHTML = expected.toFixed(2) + '€'
-        document.getElementById("current-" + type + "-amount").innerHTML = current.toFixed(2) + '€'
+        const expectedCell = document.getElementById("expected-" + type + "-amount")
+        expectedCell.innerHTML = expected.toFixed(2) + '€'
+        if (expected > 0.0) {
+            expectedCell.bgColor = 'lightgreen'
+        } else if (expected < 0.0) {
+            expectedCell.bgColor = 'lightsalmon'
+        } else {
+            expectedCell.bgColor = 'transparent'
+        }
+
+        const currentCell = document.getElementById("current-" + type + "-amount")
+        currentCell.innerHTML = current.toFixed(2) + '€'
+        if (current > 0.0) {
+            currentCell.bgColor = 'lightgreen'
+        } else if (current < 0.0) {
+            currentCell.bgColor = 'lightsalmon'
+        } else {
+            currentCell.bgColor = 'transparent'
+        }
 
         const inProgressCell = document.getElementById("inprogress-" + type + "-amount")
         inProgressCell.innerHTML = inProgress.toFixed(2) + '€'
         if (inProgress != 0.0) {
-            inProgressCell.bgColor = 'yellow'
+            inProgressCell.bgColor = 'lightsalmon'
         } else {
-            inProgressCell.bgColor = 'white'
+            inProgressCell.bgColor = 'transparent'
         }
 
         const pendingCell = document.getElementById("pending-" + type + "-amount")
         pendingCell.innerHTML = pending.toFixed(2) + '€'
         if (pending != 0.0) {
-            pendingCell.bgColor = 'red'
+            pendingCell.bgColor = 'lightsalmon'
         } else {
-            pendingCell.bgColor = 'white'
+            pendingCell.bgColor = 'transparent'
         }
     }
 }
