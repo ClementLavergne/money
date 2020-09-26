@@ -81,7 +81,7 @@ mod account {
         );
         filter.get_tag_option_mut().set(
             tags.iter()
-                .map(|tag| Category(tag.clone(), ItemSelector::Selected))
+                .map(|tag| Category(tag.clone(), ItemSelector::Discarded))
                 .collect::<Vec<Category>>()
                 .into_iter(),
         );
@@ -185,10 +185,7 @@ mod account {
 
         assert_eq!(
             account.orders().apply_filter(&filter),
-            [
-                (expected_orders[1].0, &expected_orders[1].1),
-                (expected_orders[2].0, &expected_orders[2].1),
-            ]
+            [(expected_orders[2].0, &expected_orders[2].1),]
         );
 
         account
@@ -205,9 +202,7 @@ mod account {
             account.orders().apply_filter(&filter),
             [
                 (expected_orders[0].0, &expected_orders[0].1),
-                (expected_orders[1].0, &expected_orders[1].1),
                 (expected_orders[2].0, &expected_orders[2].1),
-                (expected_orders[3].0, &expected_orders[3].1),
             ]
         );
 
@@ -215,14 +210,7 @@ mod account {
         filter.get_tag_option_mut().toggle("Service");
         filter.get_tag_option_mut().toggle("Supermarket");
 
-        assert_eq!(
-            account.orders().apply_filter(&filter),
-            [
-                (expected_orders[0].0, &expected_orders[0].1),
-                (expected_orders[2].0, &expected_orders[2].1),
-                (expected_orders[3].0, &expected_orders[3].1),
-            ]
-        );
+        assert_eq!(account.orders().apply_filter(&filter), []);
 
         filter.get_tag_option_mut().toggle("Mom & Dad");
 
