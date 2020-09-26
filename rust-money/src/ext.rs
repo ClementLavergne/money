@@ -157,7 +157,7 @@ impl OrderListExt for Vec<Order> {
             Resource => {
                 self.iter()
                     .filter(|order| order.visible && order.resource == Some(category.into()))
-                    .filter(|order| date_filter.is_order_allowed(order))
+                    .filter(|order| date_filter.is_date_allowed(order.date))
                     .for_each(|order| update_amount(order));
 
                 if nb_orders > 0 {
@@ -169,7 +169,7 @@ impl OrderListExt for Vec<Order> {
             Tag => {
                 self.iter()
                     .filter(|order| order.visible && order.tags.contains(&category.to_string()))
-                    .filter(|order| date_filter.is_order_allowed(order))
+                    .filter(|order| date_filter.is_date_allowed(order.date))
                     .for_each(|order| update_amount(order));
 
                 if nb_orders > 0 {

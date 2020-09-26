@@ -192,7 +192,7 @@ impl Filter {
         let state_match = self.state_option[order.state() as usize] == Selected;
 
         // If the date does not satisfy the range, the order will be rejected.
-        let date_match = self.date_option.is_order_allowed(order);
+        let date_match = self.date_option.is_date_allowed(order.date);
 
         // If some tags are selected, allowed orders are the ones which own them
         // at least.
