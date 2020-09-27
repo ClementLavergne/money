@@ -340,6 +340,7 @@ const refreshResourceChart = (filteredPlots, sortedDates, account) => {
     resourceChart.data.datasets.forEach(function(dataset) {
         dataset.start = []
         dataset.data = []
+        dataset.labels = []
     })
     // Initialize total amount
     resourceList.forEach(function() {
@@ -486,6 +487,7 @@ const refreshTagChart = (filteredPlots, sortedDates, account) => {
     tagChart.data.datasets.forEach(function(dataset) {
         dataset.start = []
         dataset.data = []
+        dataset.labels = []
     })
     validDates.forEach(function(date, date_index) {
         const converted_date = new Date(date)
@@ -608,6 +610,7 @@ const refreshTransactionChart = (filteredPlots, sortedDates) => {
     transactionChart.data.datasets.forEach(function(dataset) {
         dataset.start = []
         dataset.data = []
+        dataset.labels = []
     })
     sortedDates.filter(date => date != null).forEach(function(date) {
         const converted_date = new Date(date)
