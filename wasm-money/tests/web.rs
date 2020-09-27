@@ -3,7 +3,7 @@
 #![cfg(target_arch = "wasm32")]
 
 use js_sys::Array;
-use rust_money::CategoryType::{Resource, Tag};
+use rust_money::ext::CategoryType::{Resource, Tag};
 use wasm_bindgen::prelude::JsValue;
 use wasm_bindgen_test::*;
 use wasm_money::*;

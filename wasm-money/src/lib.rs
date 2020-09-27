@@ -7,13 +7,13 @@ mod utils;
 
 use chrono::NaiveDate;
 use js_sys::Array;
-use rust_money::ext::ExclusiveItemExt;
+use rust_money::ext::CategoryType::Resource;
+use rust_money::ext::{CategoryAmount, CategoryType};
+use rust_money::ext::{ExclusiveItemExt, OrderListExt};
 use rust_money::filter::category::{Category, CategoryFilter};
 use rust_money::filter::{Filter, ItemSelector, OptionNaiveDateRange};
 use rust_money::order::{Order, TransactionState};
 pub use rust_money::Account;
-use rust_money::CategoryType::Resource;
-use rust_money::{CategoryAmount, CategoryType};
 use std::convert::TryFrom;
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
@@ -54,6 +54,7 @@ pub fn get_account_categories(account: &Account, category_type: CategoryType) ->
 #[wasm_bindgen]
 pub fn get_account_filtered_orders(account: &Account, filter: &Filter) -> Array {
     account
+        .orders()
         .filtered_orders(filter)
         .iter()
         .map(|(id, order)| serialize_order_as_json(*id, order))
@@ -317,7 +318,7 @@ pub fn get_account_absolute_category_amount_by_date(
     category: &str,
     date: &str,
 ) -> Option<CategoryAmount> {
-    account.get_category_amount(
+    account.orders().calculate_category_amount(
         kind,
         category,
         OptionNaiveDateRange(None, NaiveDate::from_str(date).ok()),
@@ -333,7 +334,7 @@ pub fn get_account_relative_category_amount_by_date(
     start_date: &str,
     end_date: &str,
 ) -> Option<CategoryAmount> {
-    account.get_category_amount(
+    account.orders().calculate_category_amount(
         kind,
         category,
         OptionNaiveDateRange(
