@@ -9,6 +9,8 @@ use js_sys::Array;
 #[cfg(feature = "wasmbind")]
 use wasm_bindgen::prelude::*;
 use CategoryType::{Resource, Tag};
+use OrderingDirection::Ascending;
+use OrderingPreference::{ByAmount, ByDate, ByDescription, ById};
 
 /// Defines error types.
 #[cfg_attr(feature = "wasmbind", wasm_bindgen)]
@@ -43,6 +45,24 @@ pub struct CategoryAmount {
     pub pending: f32,
     pub in_progress: f32,
     pub expected: f32,
+}
+
+/// All kinds of sorting preferences.
+#[cfg_attr(feature = "wasmbind", wasm_bindgen)]
+#[derive(Copy, Clone)]
+pub enum OrderingPreference {
+    ByDate,
+    ByDescription,
+    ByAmount,
+    ById,
+}
+
+/// Direction when sorting orders.
+#[cfg_attr(feature = "wasmbind", wasm_bindgen)]
+#[derive(Copy, Clone, PartialEq)]
+pub enum OrderingDirection {
+    Ascending,
+    Descending,
 }
 
 /// Extension for `Vec<String>` to manage unique keys.
@@ -162,10 +182,62 @@ impl OrderListExt for Vec<Order> {
     }
 
     fn filtered_orders(&self, filter: &Filter) -> Vec<(usize, &Order)> {
-        self.iter()
+        // Retain matching orders
+        let mut filtered_vector = self
+            .iter()
             .enumerate()
             .filter(|(_, order)| filter.is_order_allowed(order))
-            .collect()
+            .collect::<Vec<(usize, &Order)>>();
+
+        // Sort filtered orders by ordering preference
+        match filter.ordering {
+            ByDate => {
+                if filter.direction == Ascending {
+                    filtered_vector.sort_by(|a, b| a.1.date.cmp(&b.1.date));
+                } else {
+                    filtered_vector.sort_by(|a, b| b.1.date.cmp(&a.1.date));
+                }
+            }
+            ByDescription => {
+                if filter.direction == Ascending {
+                    filtered_vector.sort_by(|a, b| {
+                        a.1.description
+                            .to_lowercase()
+                            .cmp(&b.1.description.to_lowercase())
+                    });
+                } else {
+                    filtered_vector.sort_by(|a, b| {
+                        b.1.description
+                            .to_lowercase()
+                            .cmp(&a.1.description.to_lowercase())
+                    });
+                }
+            }
+            ByAmount => {
+                if filter.direction == Ascending {
+                    filtered_vector.sort_by(|a, b| {
+                        a.1.amount
+                            .partial_cmp(&b.1.amount)
+                            .expect("Something goes wrong..")
+                    });
+                } else {
+                    filtered_vector.sort_by(|a, b| {
+                        b.1.amount
+                            .partial_cmp(&a.1.amount)
+                            .expect("Something goes wrong..")
+                    });
+                }
+            }
+            ById => {
+                if filter.direction == Ascending {
+                    filtered_vector.sort_by(|a, b| a.0.cmp(&b.0));
+                } else {
+                    filtered_vector.sort_by(|a, b| b.0.cmp(&a.0));
+                }
+            }
+        }
+
+        filtered_vector
     }
 }
 
@@ -173,6 +245,7 @@ impl OrderListExt for Vec<Order> {
 mod tests {
     use super::*;
     use crate::filter::NaiveDate;
+    use OrderingDirection::Descending;
 
     #[test]
     fn add_valid_key() {
@@ -428,6 +501,205 @@ mod tests {
                 OptionNaiveDateRange(None, Some(desired_date))
             ),
             None
+        );
+    }
+
+    #[test]
+    fn sort_orders_by_date() {
+        let orders = vec![
+            Order {
+                date: Some(NaiveDate::from_ymd(2020, 6, 3)),
+                ..Order::default()
+            },
+            Order {
+                date: Some(NaiveDate::from_ymd(2020, 10, 11)),
+                ..Order::default()
+            },
+            Order {
+                date: None,
+                ..Order::default()
+            },
+            Order {
+                date: Some(NaiveDate::from_ymd(2020, 8, 23)),
+                ..Order::default()
+            },
+        ];
+        let result = [2, 0, 3, 1]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ByDate,
+                direction: Ascending,
+                ..Filter::default()
+            }),
+            result
+        );
+
+        let result = [1, 3, 0, 2]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ByDate,
+                direction: Descending,
+                ..Filter::default()
+            }),
+            result
+        );
+    }
+
+    #[test]
+    fn sort_orders_by_description() {
+        let orders = vec![
+            Order {
+                description: "Shopping 🛍".into(),
+                ..Order::default()
+            },
+            Order {
+                description: "Restaurant 🥘".into(),
+                ..Order::default()
+            },
+            Order {
+                description: "Cinema 🍿".into(),
+                ..Order::default()
+            },
+            Order {
+                description: "Tennis 🎾".into(),
+                ..Order::default()
+            },
+        ];
+
+        let result = [2, 1, 0, 3]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ByDescription,
+                direction: Ascending,
+                ..Filter::default()
+            }),
+            result
+        );
+
+        let result = [3, 0, 1, 2]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ByDescription,
+                direction: Descending,
+                ..Filter::default()
+            }),
+            result
+        );
+    }
+
+    #[test]
+    fn sort_orders_by_id() {
+        let orders = vec![
+            Order {
+                description: "Shopping 🛍".into(),
+                ..Order::default()
+            },
+            Order {
+                description: "Restaurant 🥘".into(),
+                ..Order::default()
+            },
+            Order {
+                description: "Cinema 🍿".into(),
+                ..Order::default()
+            },
+            Order {
+                description: "Tennis 🎾".into(),
+                ..Order::default()
+            },
+        ];
+
+        let result = [0, 1, 2, 3]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ById,
+                direction: Ascending,
+                ..Filter::default()
+            }),
+            result
+        );
+
+        let result = [3, 2, 1, 0]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ById,
+                direction: Descending,
+                ..Filter::default()
+            }),
+            result
+        );
+    }
+
+    #[test]
+    fn sort_orders_by_amount() {
+        let orders = vec![
+            Order {
+                amount: 34.99,
+                ..Order::default()
+            },
+            Order {
+                amount: -5.5,
+                ..Order::default()
+            },
+            Order {
+                amount: -69.99,
+                ..Order::default()
+            },
+            Order {
+                amount: 15.00,
+                ..Order::default()
+            },
+        ];
+
+        let result = [2, 1, 3, 0]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ByAmount,
+                direction: Ascending,
+                ..Filter::default()
+            }),
+            result
+        );
+
+        let result = [0, 3, 1, 2]
+            .iter()
+            .map(|&x| (x, &orders[x]))
+            .collect::<Vec<(usize, &Order)>>();
+
+        assert_eq!(
+            orders.filtered_orders(&Filter {
+                ordering: ByAmount,
+                direction: Descending,
+                ..Filter::default()
+            }),
+            result
         );
     }
 }
