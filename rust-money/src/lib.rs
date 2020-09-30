@@ -85,11 +85,6 @@ impl Account {
         self.orders.len() - 1
     }
 
-    /// Deletes all hidden orders.
-    pub fn delete_hidden_orders(&mut self) {
-        self.orders.retain(|x| x.visible);
-    }
-
     /// Deletes one order permanently.
     pub fn delete_order(&mut self, index: usize) -> bool {
         if self.orders.get(index).is_some() {

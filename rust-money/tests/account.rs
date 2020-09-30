@@ -45,17 +45,6 @@ mod account {
                 (String::from("Home"), true)
             ]
         );
-
-        account.delete_hidden_orders();
-
-        assert_eq!(
-            account
-                .orders()
-                .iter()
-                .map(|x| (x.description.clone(), x.visible))
-                .collect::<Vec<(String, bool)>>(),
-            vec![(String::from("Home"), true)]
-        );
     }
 
     #[test]
@@ -307,22 +296,6 @@ mod account {
         assert_eq!(
             account.orders().apply_filter(&filter),
             [(expected_orders[3].0, &expected_orders[3].1),]
-        );
-
-        filter = Filter::default();
-        account.get_order_mut(0).unwrap().visible = false;
-        account.get_order_mut(3).unwrap().visible = false;
-        account.delete_hidden_orders();
-
-        // Update expected values
-        expected_orders[1].0 = 0;
-        expected_orders[2].0 = 1;
-        assert_eq!(
-            account.filtered_orders(&filter),
-            [
-                (expected_orders[1].0, &expected_orders[1].1),
-                (expected_orders[2].0, &expected_orders[2].1),
-            ]
         );
     }
 }
