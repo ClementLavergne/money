@@ -122,7 +122,7 @@ impl ExclusiveItemExt for Vec<String> {
     #[cfg(feature = "wasmbind")]
     fn sorted_keys(&self) -> Array {
         let mut sorted_vec = self.clone();
-        sorted_vec.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        sorted_vec.sort_by_key(|a| a.to_lowercase());
         sorted_vec.iter().map(JsValue::from).collect()
     }
 }
