@@ -2,6 +2,9 @@
 pub mod category;
 pub mod date;
 
+use crate::ext::OrderingDirection::Ascending;
+use crate::ext::OrderingPreference::ById;
+use crate::ext::{OrderingDirection, OrderingPreference};
 use crate::order::{Order, TransactionState};
 use category::CategoryFilter;
 use category::CategoryFilter::{CategoryIgnored, Enabled};
@@ -55,6 +58,8 @@ pub struct Filter {
     pub(crate) state_option: [ItemSelector; 3],
     pub(crate) resource_option: CategoryFilter,
     pub(crate) tag_option: CategoryFilter,
+    pub ordering: OrderingPreference,
+    pub direction: OrderingDirection,
 }
 
 impl Default for Filter {
@@ -65,6 +70,8 @@ impl Default for Filter {
             state_option: [Selected, Selected, Selected],
             resource_option: CategoryIgnored,
             tag_option: CategoryIgnored,
+            ordering: ById,
+            direction: Ascending,
         }
     }
 }

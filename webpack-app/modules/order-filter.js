@@ -8,6 +8,8 @@ import {
     ItemSelector,
     TransactionState,
     VisibilityFilter,
+    OrderingPreference,
+    OrderingDirection,
 } from "money"
 
 import {
@@ -38,6 +40,8 @@ const itemSelectorEnum = getEnumStrings(ItemSelector)
 const categoryTypeEnum = getEnumStrings(CategoryType)
 const transactionStateEnum = getEnumStrings(TransactionState)
 const visibilityEnum = getEnumStrings(VisibilityFilter)
+const orderingPreferenceEnum = getEnumStrings(OrderingPreference)
+const orderingDirectionEnum = getEnumStrings(OrderingDirection)
 // Category filters
 const resourcesCluster = document.getElementById("resources-manager")
 const resourcesFilterButton = document.getElementById("resources-filter-switch")
@@ -54,45 +58,93 @@ var dateHideFilter = true
 // State filter
 const statesCluster = document.getElementById("states-manager")
 // Visibility filter
-const allRadioButton = document.getElementById("all-radio")
-const activeRadioButton = document.getElementById("active-radio")
-const removedRadioButton = document.getElementById("removed-radio")
+const visibilityManager = document.getElementById("visibility-manager")
+// Ordering settings
+const orderingPreferenceDiv = document.getElementById("ordering-preference")
+const orderingDirectionDiv = document.getElementById("ordering-direction")
 
 const initVisibilityFilter = (filter, render_func) => {
-    const ignoredId = enumStringToIndex(visibilityEnum, "VisibilityIgnored")
-    const visibleId = enumStringToIndex(visibilityEnum, "VisibleOnly")
-    const hiddenId = enumStringToIndex(visibilityEnum, "HiddenOnly")
+    visibilityEnum.forEach(function(item) {
+        var label = document.createElement("label");
+        label.innerHTML = item[0]
 
-    // Initialize the radio buttons
-    switch (filter.visibility) {
-        case ignoredId:
-            allRadioButton.checked = true
-            break;
-        case visibleId:
-            activeRadioButton.checked = true
-            break;
-        case hiddenId:
-            removedRadioButton.checked = true
-            break;
-    }
+        var radioButton = document.createElement("input")
+        radioButton.type = "radio"
+        radioButton.id = item[0] + "Button"
+        radioButton.name = "visibility"
 
-    allRadioButton.addEventListener("click", event => {
-        filter.visibility = ignoredId
-        allRadioButton.checked = true
-        requestAnimationFrame(render_func)
+        // Initialization
+        if (filter.visibility == item[1]) {
+            radioButton.checked = true
+        }
+
+        radioButton.addEventListener("click", event => {
+            filter.visibility = item[1]
+            radioButton.checked = true
+            requestAnimationFrame(render_func)
+        })
+
+        var div = document.createElement("div")
+        div.appendChild(radioButton)
+        div.appendChild(label)
+        visibilityManager.appendChild(div)
+    })
+}
+
+const initOrderingFilter = (filter, render_func) => {
+    orderingPreferenceEnum.forEach(function(item) {
+        var label = document.createElement("label");
+        label.innerHTML = item[0]
+
+        var radioButton = document.createElement("input")
+        radioButton.type = "radio"
+        radioButton.id = item[0] + "Button"
+        radioButton.name = "ordering"
+
+        // Initialization
+        if (filter.ordering == item[1]) {
+            radioButton.checked = true
+        }
+
+        radioButton.addEventListener("click", event => {
+            filter.ordering = item[1]
+            radioButton.checked = true
+            requestAnimationFrame(render_func)
+        })
+
+        var div = document.createElement("div")
+        div.appendChild(radioButton)
+        div.appendChild(label)
+        orderingPreferenceDiv.appendChild(div)
     })
 
-    activeRadioButton.addEventListener("click", event => {
-        filter.visibility = visibleId
-        activeRadioButton.checked = true
-        requestAnimationFrame(render_func)
+    orderingDirectionEnum.forEach(function(item) {
+        var label = document.createElement("label");
+        label.innerHTML = item[0]
+
+        var radioButton = document.createElement("input")
+        radioButton.type = "radio"
+        radioButton.id = item[0] + "Button"
+        radioButton.name = "direction"
+
+        // Initialization
+        if (filter.direction == item[1]) {
+            radioButton.checked = true
+        }
+
+        radioButton.addEventListener("click", event => {
+            filter.direction = item[1]
+            radioButton.checked = true
+            requestAnimationFrame(render_func)
+        })
+
+        var div = document.createElement("div")
+        div.appendChild(radioButton)
+        div.appendChild(label)
+        orderingDirectionDiv.appendChild(div)
     })
 
-    removedRadioButton.addEventListener("click", event => {
-        filter.visibility = hiddenId
-        removedRadioButton.checked = true
-        requestAnimationFrame(render_func)
-    })
+    console.log(document.getElementById("ordering-manager"))
 }
 
 const initStateFilter = (filter, render_func) => {
@@ -128,7 +180,7 @@ const initStateFilter = (filter, render_func) => {
 
 const initDateRangeFilter = (account, filter, render_func) => {
     var div = document.createElement("div")
-    div.class = "container"
+    div.class = "horizontal-container"
     var div_start = document.createElement("div")
     var div_stop = document.createElement("div")
     var label_start = document.createElement("label")
@@ -250,6 +302,8 @@ const initFilter = (account, filter, render_func) => {
     initVisibilityFilter(filter, render_func)
     // Initialize state filter
     initStateFilter(filter, render_func)
+    // Initialize ordering settings
+    initOrderingFilter(filter, render_func)
 }
 
 const refreshCategoryFilter = (filter, categoryType, list) => {

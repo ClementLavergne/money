@@ -13,7 +13,7 @@
     </div>
 
     <h2>Configuration</h2>
-    <div class="container">
+    <div class="vertical-container">
       <fieldset class="element" id="resources-manager">
         <legend>Resources</legend>
         <input type="text" list="resource-list" id="input-resource">
@@ -37,18 +37,18 @@
         <button type="button" id="date-filter-switch">enable filter</button>
         <br /><br />
       </fieldset>
-      <fieldset class="element" id="visibility-manager">
-        <legend>Display</legend>
-        <input type="radio" id="all-radio" name="visibility" value="all">
-        <label for="male">All orders</label><br>
-        <input type="radio" id="active-radio" name="visibility" value="active">
-        <label for="female">Active only</label><br>
-        <input type="radio" id="removed-radio" name="visibility" value="removed">
-        <label for="other">Removed only</label>
-        <br /><br />
+      <fieldset class="vertical-container" id="visibility-manager">
+        <legend>Visibility</legend>
       </fieldset>
-      <fieldset class="element" id="states-manager">
+      <fieldset class="vertical-container" id="states-manager">
         <legend>States</legend>
+      </fieldset>
+      <fieldset class="horizontal-container" id="ordering-manager">
+        <legend>Ordering</legend>
+        <div class="vertical-container" id="ordering-preference">
+        </div>
+        <div class="vertical-container" id="ordering-direction">
+        </div>
       </fieldset>
     </div>
 
