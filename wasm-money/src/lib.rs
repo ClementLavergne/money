@@ -55,7 +55,7 @@ pub fn get_account_categories(account: &Account, category_type: CategoryType) ->
 pub fn get_account_filtered_orders(account: &Account, filter: &Filter) -> Array {
     account
         .orders()
-        .filtered_orders(filter)
+        .apply_filter(filter)
         .iter()
         .map(|(id, order)| serialize_order_as_json(*id, order))
         .collect()

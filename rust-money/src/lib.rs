@@ -353,10 +353,10 @@ mod tests {
             };
 
             assert_eq!(
-                account.orders.filtered_orders(&filter_1),
+                account.orders.apply_filter(&filter_1),
                 vec![orders[0], orders[3]]
             );
-            assert_eq!(account.orders.filtered_orders(&filter_2), vec![orders[4]]);
+            assert_eq!(account.orders.apply_filter(&filter_2), vec![orders[4]]);
         }
 
         #[test]

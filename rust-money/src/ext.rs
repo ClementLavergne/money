@@ -89,7 +89,7 @@ pub trait OrderListExt {
     ) -> Option<CategoryAmount>;
 
     /// Returns selected orders with their associated id.
-    fn filtered_orders(&self, filter: &Filter) -> Vec<(usize, &Order)>;
+    fn apply_filter(&self, filter: &Filter) -> Vec<(usize, &Order)>;
 }
 
 impl ExclusiveItemExt for Vec<String> {
@@ -181,7 +181,7 @@ impl OrderListExt for Vec<Order> {
         }
     }
 
-    fn filtered_orders(&self, filter: &Filter) -> Vec<(usize, &Order)> {
+    fn apply_filter(&self, filter: &Filter) -> Vec<(usize, &Order)> {
         // Retain matching orders
         let mut filtered_vector = self
             .iter()
@@ -530,7 +530,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ByDate,
                 direction: Ascending,
                 ..Filter::default()
@@ -544,7 +544,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ByDate,
                 direction: Descending,
                 ..Filter::default()
@@ -580,7 +580,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ByDescription,
                 direction: Ascending,
                 ..Filter::default()
@@ -594,7 +594,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ByDescription,
                 direction: Descending,
                 ..Filter::default()
@@ -630,7 +630,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ById,
                 direction: Ascending,
                 ..Filter::default()
@@ -644,7 +644,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ById,
                 direction: Descending,
                 ..Filter::default()
@@ -680,7 +680,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ByAmount,
                 direction: Ascending,
                 ..Filter::default()
@@ -694,7 +694,7 @@ mod tests {
             .collect::<Vec<(usize, &Order)>>();
 
         assert_eq!(
-            orders.filtered_orders(&Filter {
+            orders.apply_filter(&Filter {
                 ordering: ByAmount,
                 direction: Descending,
                 ..Filter::default()
