@@ -58,47 +58,36 @@ var dateHideFilter = true
 // State filter
 const statesCluster = document.getElementById("states-manager")
 // Visibility filter
-const allRadioButton = document.getElementById("all-radio")
-const activeRadioButton = document.getElementById("active-radio")
-const removedRadioButton = document.getElementById("removed-radio")
+const visibilityManager = document.getElementById("visibility-manager")
 // Ordering settings
 const orderingPreferenceDiv = document.getElementById("ordering-preference")
 const orderingDirectionDiv = document.getElementById("ordering-direction")
 
 const initVisibilityFilter = (filter, render_func) => {
-    const ignoredId = enumStringToIndex(visibilityEnum, "VisibilityIgnored")
-    const visibleId = enumStringToIndex(visibilityEnum, "VisibleOnly")
-    const hiddenId = enumStringToIndex(visibilityEnum, "HiddenOnly")
+    visibilityEnum.forEach(function(item) {
+        var label = document.createElement("label");
+        label.innerHTML = item[0]
 
-    // Initialize the radio buttons
-    switch (filter.visibility) {
-        case ignoredId:
-            allRadioButton.checked = true
-            break;
-        case visibleId:
-            activeRadioButton.checked = true
-            break;
-        case hiddenId:
-            removedRadioButton.checked = true
-            break;
-    }
+        var radioButton = document.createElement("input")
+        radioButton.type = "radio"
+        radioButton.id = item[0] + "Button"
+        radioButton.name = "visibility"
 
-    allRadioButton.addEventListener("click", event => {
-        filter.visibility = ignoredId
-        allRadioButton.checked = true
-        requestAnimationFrame(render_func)
-    })
+        // Initialization
+        if (filter.visibility == item[1]) {
+            radioButton.checked = true
+        }
 
-    activeRadioButton.addEventListener("click", event => {
-        filter.visibility = visibleId
-        activeRadioButton.checked = true
-        requestAnimationFrame(render_func)
-    })
+        radioButton.addEventListener("click", event => {
+            filter.visibility = item[1]
+            radioButton.checked = true
+            requestAnimationFrame(render_func)
+        })
 
-    removedRadioButton.addEventListener("click", event => {
-        filter.visibility = hiddenId
-        removedRadioButton.checked = true
-        requestAnimationFrame(render_func)
+        var div = document.createElement("div")
+        div.appendChild(radioButton)
+        div.appendChild(label)
+        visibilityManager.appendChild(div)
     })
 }
 
