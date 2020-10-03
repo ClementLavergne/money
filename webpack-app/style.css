@@ -15,8 +15,14 @@ body {
     justify-content: center;
 }
 
-.container {
+.horizontal-container {
     display: flex;
+    justify-content: space-between;
+}
+
+.vertical-container {
+    display: flex;
+    flex-direction: column;
 }
 
 .chart-container {
