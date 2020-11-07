@@ -231,7 +231,7 @@ pub fn add_filter_category(filter: &mut Filter, category_type: CategoryType, nam
     } else {
         filter
             .get_tag_option_mut()
-            .add(Category(name.into(), ItemSelector::Selected));
+            .add(Category(name.into(), ItemSelector::Discarded));
     }
 }
 

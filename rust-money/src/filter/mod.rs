@@ -7,7 +7,7 @@ use crate::ext::OrderingPreference::ById;
 use crate::ext::{OrderingDirection, OrderingPreference};
 use crate::order::{Order, TransactionState};
 use category::CategoryFilter;
-use category::CategoryFilter::{CategoryIgnored, Enabled};
+use category::CategoryFilter::CategoryIgnored;
 pub use chrono::NaiveDate;
 use date::NaiveDateFilter::{Between, DateIgnored, Since, Until};
 pub use date::{NaiveDateFilter, OptionNaiveDateRange};
@@ -192,51 +192,14 @@ impl Filter {
         let state_match = self.state_option[order.state() as usize] == Selected;
 
         // If the date does not satisfy the range, the order will be rejected.
-        let date_match = self.date_option.is_order_allowed(order);
+        let date_match = self.date_option.is_date_allowed(order.date);
 
-        // If all tags are discarded, the order will be rejected.
-        // Unknown tags are not filtered.
-        let tag_match = match &self.tag_option {
-            CategoryIgnored => true,
-            Enabled(tags) => {
-                // At least one tag is selected
-                if tags
-                    .iter()
-                    .fold(false, |acc, tag| acc | (tag.1 == Selected))
-                {
-                    // Accept order if it owns a selected tag
-                    order.tags.iter().fold(false, |acc, tag| {
-                        if let Some(index) = tags.iter().position(|item| &item.0 == tag) {
-                            acc | (tags[index].1 == Selected)
-                        } else {
-                            acc | false
-                        }
-                    })
-                } else {
-                    // Accept order with neither tag nor unknown ones
-                    order
-                        .tags
-                        .iter()
-                        .all(|tag| tags.iter().position(|item| &item.0 == tag) == None)
-                }
-            }
-        };
+        // If some tags are selected, allowed orders are the ones which own them
+        // at least.
+        let tag_match = self.tag_option.with_each_selected(&order.tags);
 
         // Make sure the resource is part of allowed ones
-        let resource_match = match &self.resource_option {
-            CategoryIgnored => true,
-            Enabled(resources) => {
-                if let Some(resource) = &order.resource {
-                    if let Some(index) = resources.iter().position(|item| &item.0 == resource) {
-                        resources[index].1 == Selected
-                    } else {
-                        true
-                    }
-                } else {
-                    resources.iter().all(|item| item.1 == Discarded)
-                }
-            }
-        };
+        let resource_match = self.resource_option.among_any_selected(&order.resource);
 
         visibility_match && state_match && date_match && tag_match && resource_match
     }
@@ -245,7 +208,6 @@ impl Filter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use category::Category;
 
     #[test]
     fn allow_order_with_any_visibility() {
@@ -302,186 +264,6 @@ mod tests {
 
         assert_eq!(filter.is_order_allowed(&allowed_order), true);
         assert_eq!(filter.is_order_allowed(&rejected_order), false);
-    }
-
-    #[test]
-    fn allow_order_with_any_resource() {
-        let filter = Filter {
-            resource_option: CategoryIgnored,
-            ..Filter::default()
-        };
-        let allowed_order_1 = Order {
-            resource: None,
-            ..Order::default()
-        };
-        let allowed_order_2 = Order {
-            resource: Some("Car".to_string()),
-            ..Order::default()
-        };
-
-        assert_eq!(filter.is_order_allowed(&allowed_order_1), true);
-        assert_eq!(filter.is_order_allowed(&allowed_order_2), true);
-    }
-
-    #[test]
-    fn allow_order_with_resource_among_selected_only() {
-        let categories = [
-            Category("Bank".to_string(), Selected),
-            Category("Cash".to_string(), Discarded),
-        ];
-        let filter = Filter {
-            resource_option: Enabled(categories.to_vec()),
-            ..Filter::default()
-        };
-        let allowed_order = Order {
-            resource: Some(categories[0].0.clone()),
-            ..Order::default()
-        };
-        let rejected_order = Order {
-            resource: Some(categories[1].0.clone()),
-            ..Order::default()
-        };
-
-        assert_eq!(filter.is_order_allowed(&allowed_order), true);
-        assert_eq!(filter.is_order_allowed(&rejected_order), false);
-    }
-
-    #[test]
-    fn allow_order_without_resource_only() {
-        let categories = [
-            Category("Bank".to_string(), Discarded),
-            Category("Cash".to_string(), Discarded),
-        ];
-        let filter = Filter {
-            resource_option: Enabled(categories.to_vec()),
-            ..Filter::default()
-        };
-        let allowed_order = Order {
-            resource: None,
-            ..Order::default()
-        };
-        let rejected_order = Order {
-            resource: Some(categories[1].0.clone()),
-            ..Order::default()
-        };
-
-        assert_eq!(filter.is_order_allowed(&allowed_order), true);
-        assert_eq!(filter.is_order_allowed(&rejected_order), false);
-    }
-
-    #[test]
-    fn reject_order_without_resource_only() {
-        let categories = [
-            Category("Bank".to_string(), Selected),
-            Category("Cash".to_string(), Selected),
-        ];
-        let filter = Filter {
-            resource_option: Enabled(categories.to_vec()),
-            ..Filter::default()
-        };
-        let allowed_order = Order {
-            resource: Some(categories[0].0.clone()),
-            ..Order::default()
-        };
-        let rejected_order = Order {
-            resource: None,
-            ..Order::default()
-        };
-
-        assert_eq!(filter.is_order_allowed(&allowed_order), true);
-        assert_eq!(filter.is_order_allowed(&rejected_order), false);
-    }
-
-    #[test]
-    fn allow_order_with_a_least_a_selected_tag() {
-        let categories = [
-            Category("Car".to_string(), Selected),
-            Category("Mum".to_string(), Discarded),
-            Category("Microsoft".to_string(), Selected),
-        ];
-        let allowed_order_1 = Order {
-            tags: vec![
-                categories[0].0.clone(),
-                categories[1].0.clone(),
-                categories[2].0.clone(),
-            ],
-            ..Order::default()
-        };
-        let allowed_order_2 = Order {
-            tags: vec![categories[0].0.clone()],
-            ..Order::default()
-        };
-        let allowed_order_3 = Order {
-            tags: vec![categories[2].0.clone()],
-            ..Order::default()
-        };
-        let rejected_order_1 = Order {
-            tags: vec![categories[1].0.clone()],
-            ..Order::default()
-        };
-        let rejected_order_2 = Order {
-            tags: vec!["Unknown".to_string()],
-            ..Order::default()
-        };
-        let rejected_order_3 = Order {
-            tags: Vec::new(),
-            ..Order::default()
-        };
-        let filter = Filter {
-            tag_option: Enabled(categories.to_vec()),
-            ..Filter::default()
-        };
-
-        assert_eq!(filter.is_order_allowed(&allowed_order_1), true);
-        assert_eq!(filter.is_order_allowed(&allowed_order_2), true);
-        assert_eq!(filter.is_order_allowed(&allowed_order_3), true);
-        assert_eq!(filter.is_order_allowed(&rejected_order_1), false);
-        assert_eq!(filter.is_order_allowed(&rejected_order_2), false);
-        assert_eq!(filter.is_order_allowed(&rejected_order_3), false);
-    }
-
-    #[test]
-    fn allow_order_without_known_tags_only() {
-        let categories = [
-            Category("Car".to_string(), Discarded),
-            Category("Mum".to_string(), Discarded),
-            Category("Microsoft".to_string(), Discarded),
-        ];
-        let allowed_order_1 = Order {
-            tags: Vec::new(),
-            ..Order::default()
-        };
-        let allowed_order_2 = Order {
-            tags: vec!["Unknown".to_string()],
-            ..Order::default()
-        };
-        let allowed_order_3 = Order {
-            tags: vec!["Unknown".to_string(), "Nothing".to_string()],
-            ..Order::default()
-        };
-        let rejected_order_1 = Order {
-            tags: vec![categories[1].0.clone()],
-            ..Order::default()
-        };
-        let rejected_order_2 = Order {
-            tags: vec![categories[0].0.clone(), categories[1].0.clone()],
-            ..Order::default()
-        };
-        let rejected_order_3 = Order {
-            tags: vec![categories[0].0.clone(), "Unknown".to_string()],
-            ..Order::default()
-        };
-        let filter = Filter {
-            tag_option: Enabled(categories.to_vec()),
-            ..Filter::default()
-        };
-
-        assert_eq!(filter.is_order_allowed(&allowed_order_1), true);
-        assert_eq!(filter.is_order_allowed(&allowed_order_2), true);
-        assert_eq!(filter.is_order_allowed(&allowed_order_3), true);
-        assert_eq!(filter.is_order_allowed(&rejected_order_1), false);
-        assert_eq!(filter.is_order_allowed(&rejected_order_2), false);
-        assert_eq!(filter.is_order_allowed(&rejected_order_3), false);
     }
 
     #[test]

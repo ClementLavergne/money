@@ -143,8 +143,6 @@ const initOrderingFilter = (filter, render_func) => {
         div.appendChild(label)
         orderingDirectionDiv.appendChild(div)
     })
-
-    console.log(document.getElementById("ordering-manager"))
 }
 
 const initStateFilter = (filter, render_func) => {
@@ -325,6 +323,8 @@ const refreshCategoryFilter = (filter, categoryType, list) => {
 const initCategoryFilter = (filter, type, list, render_func) => {
     var node = undefined
     var categoryType = undefined
+    const selectedIndex = enumStringToIndex(itemSelectorEnum, "Selected")
+    const discardedIndex = enumStringToIndex(itemSelectorEnum, "Discarded")
 
     if (type == "Resource") {
         categoryType = enumStringToIndex(categoryTypeEnum, "Resource")
@@ -344,33 +344,47 @@ const initCategoryFilter = (filter, type, list, render_func) => {
             button.value = "deselect all"
             button.id = "select-button"
 
-            button.addEventListener('click', () => {
-                if (categoryType != undefined) {
-                    if (button.value == "deselect all") {
-                        button.value = "select all"
-                        const selectedIndex = enumStringToIndex(itemSelectorEnum, "Selected")
+            if (type == "Resource") {
+                button.addEventListener('click', () => {
+                    if (categoryType != undefined) {
+                        if (button.value == "deselect all") {
+                            button.value = "select all"
 
+                            list.forEach(function(item) {
+                                if (get_filter_category_state(filter, categoryType, item) == selectedIndex) {
+                                    toggle_filter_category(filter, categoryType, item)
+                                }
+                            })
+                        } else {
+                            button.value = "deselect all"
+
+                            list.forEach(function(item) {
+                                if (get_filter_category_state(filter, categoryType, item) == discardedIndex) {
+                                    toggle_filter_category(filter, categoryType, item)
+                                }
+                            })
+                        }
+                        refreshCategoryFilter(filter, categoryType, list)
+                        requestAnimationFrame(render_func)
+                    } else {
+                        console.error("Invalid node: ", node)
+                    }
+                })
+            } else {
+                button.addEventListener('click', () => {
+                    if (categoryType != undefined) {
                         list.forEach(function(item) {
                             if (get_filter_category_state(filter, categoryType, item) == selectedIndex) {
                                 toggle_filter_category(filter, categoryType, item)
                             }
                         })
+                        refreshCategoryFilter(filter, categoryType, list)
+                        requestAnimationFrame(render_func)
                     } else {
-                        button.value = "deselect all"
-                        const discardedIndex = enumStringToIndex(itemSelectorEnum, "Discarded")
-
-                        list.forEach(function(item) {
-                            if (get_filter_category_state(filter, categoryType, item) == discardedIndex) {
-                                toggle_filter_category(filter, categoryType, item)
-                            }
-                        })
+                        console.error("Invalid node: ", node)
                     }
-                    refreshCategoryFilter(filter, categoryType, list)
-                    requestAnimationFrame(render_func)
-                } else {
-                    console.error("Invalid node: ", node)
-                }
-            })
+                })
+            }
 
             node.appendChild(button)
         }
@@ -385,6 +399,18 @@ const initCategoryFilter = (filter, type, list, render_func) => {
             checkbox.id = "category-" + categoryType + "-" + item + "-checkbox"
 
             if (categoryType != undefined) {
+                if (type == "Resource") {
+                    // Select all resources
+                    if (get_filter_category_state(filter, categoryType, item) != selectedIndex) {
+                        toggle_filter_category(filter, categoryType, item)
+                    }
+                } else {
+                    // Deselect all tags
+                    if (get_filter_category_state(filter, categoryType, item) == selectedIndex) {
+                        toggle_filter_category(filter, categoryType, item)
+                    }
+                }
+
                 checkbox.addEventListener('change', function() {
                     if (toggle_filter_category(filter, categoryType, item) != undefined) {
                         requestAnimationFrame(render_func)
