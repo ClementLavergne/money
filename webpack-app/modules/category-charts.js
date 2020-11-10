@@ -103,7 +103,7 @@ const initBalanceChart = () => {
                     id: 'A',
                     stacked: false,
                     ticks: {
-                        beginAtZero: false,
+                        beginAtZero: true,
                         callback: function(value, index, values) {
                             return value + '€';
                         }
@@ -114,7 +114,7 @@ const initBalanceChart = () => {
                     position: 'right',
                     stacked: false,
                     ticks: {
-                        beginAtZero: false,
+                        beginAtZero: true,
                         callback: function(value, index, values) {
                             return value + '%';
                         }
@@ -266,7 +266,7 @@ const initResourceChart = (resourceList) => {
                 yAxes: [{
                     stacked: false,
                     ticks: {
-                        beginAtZero: false,
+                        beginAtZero: true,
                         callback: function(value, index, values) {
                             return value + '€'
                         }
@@ -423,7 +423,7 @@ const initTagChart = (tagList) => {
                 yAxes: [{
                     stacked: false,
                     ticks: {
-                        beginAtZero: false,
+                        beginAtZero: true,
                         callback: function(value, index, values) {
                             return value + '€'
                         }
@@ -556,7 +556,7 @@ const initTransactionChart = () => {
                 yAxes: [{
                     stacked: false,
                     ticks: {
-                        beginAtZero: false,
+                        beginAtZero: true,
                         callback: function(value, index, values) {
                             return value + '€'
                         }
