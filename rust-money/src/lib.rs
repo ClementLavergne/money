@@ -20,6 +20,7 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(feature = "wasmbind", wasm_bindgen)]
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Account {
+    label: String,
     tags: Vec<String>,
     resources: Vec<String>,
     orders: Vec<Order>,
@@ -35,10 +36,16 @@ impl Account {
         console_error_panic_hook::set_once();
 
         Account {
+            label: "MONEY".into(),
             tags: Vec::new(),
             resources: Vec::new(),
             orders: Vec::new(),
         }
+    }
+
+    /// Update the label of the account.
+    pub fn set_label(&mut self, label: &str) {
+        self.label = label.into();
     }
 
     /// Adds a valid tag if it doesn't exist yet.
@@ -97,6 +104,11 @@ impl Account {
 }
 
 impl Account {
+    /// Returns the label.
+    pub fn label(&self) -> &String {
+        &self.label
+    }
+
     /// Returns available tags.
     pub fn tags(&self) -> &Vec<String> {
         &self.tags
@@ -375,6 +387,7 @@ mod tests {
                 "Work".to_string(),
             ];
             let mut saved_account = Account {
+                label: "A year of wonderful things! 🙏".into(),
                 resources: resources.to_vec(),
                 tags: tags.to_vec(),
                 orders: vec![

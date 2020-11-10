@@ -40,6 +40,12 @@ pub fn load_account_data(account: &mut Account, data: &str) -> bool {
     }
 }
 
+/// Returns the labek as a `JsValue`.
+#[wasm_bindgen]
+pub fn get_account_label(account: &Account) -> JsValue {
+    JsValue::from(account.label())
+}
+
 /// Returns all categories of a given type as `JsValues`.
 #[wasm_bindgen]
 pub fn get_account_categories(account: &Account, category_type: CategoryType) -> Array {

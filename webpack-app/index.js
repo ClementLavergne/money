@@ -8,6 +8,7 @@ import {
     load_account_data,
     remove_filter_category,
     serialize_account_as_yaml,
+    get_account_label,
 } from "money"
 
 import {
@@ -48,6 +49,8 @@ import {
 // Singleton
 const account = new Account()
 const filter = new Filter()
+// Label
+const accountLabel = document.getElementById("account-label")
 // Tags management
 const inputTag = document.getElementById("input-tag")
 const tagsList = document.getElementById("tag-list")
@@ -124,6 +127,12 @@ const refreshCategoryList = (type) => {
         }
     }
 }
+
+accountLabel.addEventListener('keyup', ({key}) => {
+    if (key === "Enter") {
+        account.set_label(accountLabel.value)
+    }
+})
 
 addTag.addEventListener("click", event => {
     if (account.add_tag(inputTag.value) == undefined) {
@@ -220,6 +229,10 @@ const render = () => {
     const orders = get_account_filtered_orders(account, filter)
     console.log("Render!")
 
+    // Set the label
+    accountLabel.value = get_account_label(account)
+
+    // Display orders
     if (!orders.length == 0) {
         var dateOrders = new Map()
         var firstDays = []
