@@ -89,7 +89,7 @@ const refreshCategoryTable = (account, type, list, categoryTypeId) => {
 
             const inProgressCell = document.getElementById("inprogress-" + type + "-" + item + "-amount")
             inProgressCell.innerHTML = amount.in_progress.toFixed(2) + '€'
-            if (amount.in_progress != 0.0) {
+            if (amount.in_progress < 0.0) {
                 inProgressCell.bgColor = 'lightsalmon'
             } else {
                 inProgressCell.bgColor = 'transparent'
@@ -97,7 +97,7 @@ const refreshCategoryTable = (account, type, list, categoryTypeId) => {
 
             const pendingCell = document.getElementById("pending-" + type + "-" + item + "-amount")
             pendingCell.innerHTML = amount.pending.toFixed(2) + '€'
-            if (amount.pending != 0.0) {
+            if (amount.pending < 0.0) {
                 pendingCell.bgColor = 'lightsalmon'
             } else {
                 pendingCell.bgColor = 'transparent'
@@ -134,7 +134,7 @@ const refreshCategoryTable = (account, type, list, categoryTypeId) => {
 
         const inProgressCell = document.getElementById("inprogress-" + type + "-amount")
         inProgressCell.innerHTML = inProgress.toFixed(2) + '€'
-        if (inProgress != 0.0) {
+        if (inProgress < 0.0) {
             inProgressCell.bgColor = 'lightsalmon'
         } else {
             inProgressCell.bgColor = 'transparent'
@@ -142,7 +142,7 @@ const refreshCategoryTable = (account, type, list, categoryTypeId) => {
 
         const pendingCell = document.getElementById("pending-" + type + "-amount")
         pendingCell.innerHTML = pending.toFixed(2) + '€'
-        if (pending != 0.0) {
+        if (pending < 0.0) {
             pendingCell.bgColor = 'lightsalmon'
         } else {
             pendingCell.bgColor = 'transparent'
