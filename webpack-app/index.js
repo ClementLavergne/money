@@ -268,11 +268,13 @@ const render = () => {
 
         // Sort data
         const sortedDates = Array.from(dateOrders.keys()).sort();
-        firstDays.sort()
-        firstDays[0] = sortedDates[0]
 
         // Refresh charts
-        refreshBalanceChart(firstDays, account)
+        if (firstDays.length > 0) {
+            firstDays.sort()
+            firstDays[0] = sortedDates[0]
+            refreshBalanceChart(firstDays, account)
+        }
         refreshResourceChart(dateOrders, sortedDates, account)
         refreshTagChart(dateOrders, sortedDates, account)
         refreshTransactionChart(dateOrders, sortedDates)
