@@ -106,11 +106,7 @@ impl Filter {
             NaiveDate::from_str(stop).ok(),
         ));
 
-        if let Between(_, _) = self.date_option {
-            true
-        } else {
-            false
-        }
+        matches!(self.date_option, Between(_, _))
     }
 
     /// Sets the start date limit for allowed orders.
