@@ -7,6 +7,7 @@ pub mod filter;
 pub mod order;
 
 use ext::{ExclusiveItemExt, RequestFailure};
+use filter::Filter;
 use order::Order;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -89,6 +90,14 @@ impl Account {
     /// Creates a default order.
     pub fn add_order(&mut self) {
         self.orders.push(Order::default());
+    }
+
+    /// Creates a filtered order.
+    ///
+    /// > Can not be merged with `add_default_order` as optional with reference
+    /// > is not supported by **wasmbindgen**
+    pub fn add_filtered_order(&mut self, filter: &Filter) {
+        self.orders.push(Order::from(filter));
     }
 
     /// duplicates an existing order and returns its id.

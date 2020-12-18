@@ -1,7 +1,6 @@
 //! # Extensions.
 
-use crate::filter::Filter;
-use crate::filter::{NaiveDateFilter, OptionNaiveDateRange};
+use crate::filter::{Filter, NaiveDateFilter, OptionNaiveDateRange};
 use crate::order::Order;
 use crate::order::TransactionState::{Done, InProgress, Pending};
 #[cfg(feature = "wasmbind")]
