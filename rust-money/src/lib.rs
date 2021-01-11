@@ -7,6 +7,7 @@ pub mod filter;
 pub mod order;
 
 use ext::{ExclusiveItemExt, RequestFailure};
+use filter::Filter;
 use order::Order;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -87,9 +88,28 @@ impl Account {
     }
 
     /// Creates a default order.
-    pub fn add_order(&mut self) -> usize {
+    pub fn add_order(&mut self) {
         self.orders.push(Order::default());
-        self.orders.len() - 1
+    }
+
+    /// Creates a filtered order.
+    ///
+    /// > Can not be merged with `add_default_order` as optional with reference
+    /// > is not supported by **wasmbindgen**
+    pub fn add_filtered_order(&mut self, filter: &Filter) {
+        self.orders.push(Order::from(filter));
+    }
+
+    /// duplicates an existing order and returns its id.
+    pub fn duplicate_order(&mut self, index: usize) -> bool {
+        // Copy the order if it exists
+        if let Some(order) = self.orders.get(index) {
+            let copy = order.clone();
+            self.orders.push(copy);
+            true
+        } else {
+            false
+        }
     }
 
     /// Deletes one order permanently.
@@ -178,6 +198,27 @@ mod tests {
         use filter::date::NaiveDateFilter;
         use filter::{Filter, ItemSelector, VisibilityFilter};
         use order::TransactionState;
+
+        #[test]
+        fn duplicate_existing_order() {
+            let mut account = Account {
+                orders: vec![
+                    Order::default(),
+                    Order {
+                        description: "Test".into(),
+                        amount: -2.99,
+                        ..Order::default()
+                    },
+                ],
+                ..Account::create()
+            };
+
+            assert_eq!(account.duplicate_order(2), false);
+            assert_eq!(account.duplicate_order(1), true);
+            assert_eq!(account.duplicate_order(0), true);
+            assert_eq!(account.orders[1], account.orders[2]);
+            assert_eq!(account.orders[0], account.orders[3]);
+        }
 
         #[test]
         fn remove_resource_used_by_orders() {

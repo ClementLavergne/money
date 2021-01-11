@@ -195,25 +195,17 @@ const addOrderRow = (order, account, filter, render_func) => {
             requestAnimationFrame(render_func)
         })
 
-        var dupplicate_button = document.createElement("input")
-        dupplicate_button.type = "button"
-        dupplicate_button.value = "dupplicate"
-        dupplicate_button.addEventListener('click', event => {
-            console.log("Order " + order.id + ": dupplicated!")
-            const newId = account.add_order()
-            if (order.order.date != null) {
-                set_account_order_date(account, newId, order.order.date)
+        var duplicate_button = document.createElement("input")
+        duplicate_button.type = "button"
+        duplicate_button.value = "duplicate"
+        duplicate_button.addEventListener('click', event => {
+            if (account.duplicate_order(order.id)) {
+                console.log("Order " + order.id + ": duplicated!")
             }
-            set_account_order_description(account, newId, order.order.description)
-            set_account_order_amount(account, newId, order.order.amount)
-            if (order.order.resource != null) {
-                set_account_order_resource(account, newId, order.order.resource)
-            }
-            set_account_order_tags(account, newId, order.order.tags)
             requestAnimationFrame(render_func)
         })
 
-        row.insertCell().appendChild(dupplicate_button)
+        row.insertCell().appendChild(duplicate_button)
         row.insertCell().appendChild(remove_button)
     } else {
         var restore_button = document.createElement("input")

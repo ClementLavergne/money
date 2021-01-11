@@ -1,6 +1,9 @@
 //! # Management of a *transaction*.
 
 use super::ext::ExclusiveItemExt;
+use crate::filter::category::CategoryFilter;
+use crate::filter::date::NaiveDateFilter;
+use crate::filter::{Filter, ItemSelector, VisibilityFilter};
 use chrono::{Local, NaiveDate};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "wasmbind")]
@@ -40,6 +43,59 @@ impl Default for Order {
             tags: Vec::new(),
             state: TransactionState::Pending,
             visible: true,
+        }
+    }
+}
+
+impl From<&Filter> for Order {
+    fn from(filter: &Filter) -> Self {
+        Order {
+            date: match filter.date_option {
+                NaiveDateFilter::DateIgnored => None,
+                NaiveDateFilter::Since(date) | NaiveDateFilter::Between(date, _) => Some(date),
+                NaiveDateFilter::Until(date) => Some(date),
+            },
+            // Pick-up the first selected one
+            resource: if let CategoryFilter::Enabled(items) = &filter.resource_option {
+                if let Some(first_selected) = items
+                    .iter()
+                    .find(|resource| resource.1 == ItemSelector::Selected)
+                {
+                    Some(first_selected.0.clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            },
+            // Pick-up all selected ones
+            tags: if let CategoryFilter::Enabled(items) = &filter.tag_option {
+                items
+                    .iter()
+                    .filter_map(|tag| {
+                        if tag.1 == ItemSelector::Selected {
+                            Some(tag.0.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            // Pick-up the first selected one
+            state: if let Some(first_selected) = filter
+                .state_option
+                .iter()
+                .enumerate()
+                .find(|(_, &state)| state == ItemSelector::Selected)
+            {
+                unsafe { std::mem::transmute(first_selected.0 as u8) }
+            } else {
+                TransactionState::Pending
+            },
+            visible: !matches!(filter.visibility, VisibilityFilter::HiddenOnly),
+            ..Order::default()
         }
     }
 }
@@ -95,6 +151,18 @@ impl Order {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn add_new_with_date_filtering() {
+        let date = NaiveDate::from_ymd(2020, 9, 9);
+        let filter = Filter {
+            date_option: NaiveDateFilter::Since(date),
+            ..Filter::default()
+        };
+        let order = Order::from(&filter);
+
+        assert_eq!(order.date, Some(date));
+    }
 
     #[test]
     fn set_valid_resource() {

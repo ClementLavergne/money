@@ -179,7 +179,7 @@ removeResource.addEventListener("click", event => {
 })
 
 addOrder.addEventListener("click", event => {
-    account.add_order()
+    account.add_filtered_order(filter)
     requestAnimationFrame(render)
 })
 
